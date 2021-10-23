@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Genetic Algorithm": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

@@ -1,0 +1,14 @@
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.exe
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.deps.json
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.runtimeconfig.json
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.runtimeconfig.dev.json
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.dll
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\bin\Debug\netcoreapp3.1\Genetic Algorithm.pdb
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.csproj.AssemblyReference.cache
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.AssemblyInfoInputs.cache
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.AssemblyInfo.cs
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.csproj.CoreCompileInputs.cache
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.dll
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.pdb
+C:\Users\matth\Documents\Uni Work\ALife\Lab Recreation\Genetic Algorithm\Genetic Algorithm\obj\Debug\netcoreapp3.1\Genetic Algorithm.genruntimeconfig.cache
