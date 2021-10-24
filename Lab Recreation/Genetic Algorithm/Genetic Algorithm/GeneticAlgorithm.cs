@@ -4,8 +4,8 @@ using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Genetic_Algorithm {
-    class Program {
+namespace GeneticAlgorithm {
+    class GeneticAlgorithm {
 
         // Initialise the GA population
         // Fill an empty population array with N=pop_size random individuals
@@ -15,8 +15,8 @@ namespace Genetic_Algorithm {
         // either each "solution" is the same random string (converged=True) or
         // each "solution" is a different random string (converged=False)
         // the function as provided doesn't implement the converged=True functionality
-        static Dictionary<string, float> Initialise(int popSize, int genomeLength, string geneticAlphabet, bool converged) {
-            Dictionary<string, float> pop = new Dictionary<string, float>();
+        static List<(string, float)> Initialise(int popSize, int genomeLength, string geneticAlphabet, bool converged) {
+            List<(string, float)> pop = new List<(string, float)>();
             Random rand = new Random();
             if (converged) {
                 string solution = "";
@@ -24,7 +24,7 @@ namespace Genetic_Algorithm {
                     solution += geneticAlphabet[rand.Next(genomeLength)];
                 }
                 while (pop.Count < popSize) {
-                    pop.Add(solution, 0);
+                    pop.Add((solution, 0));
                 }
             } else {
                 while (pop.Count < popSize) {
@@ -32,7 +32,7 @@ namespace Genetic_Algorithm {
                     for (int i = 0; i < genomeLength; i++) {
                         solution += geneticAlphabet[rand.Next(geneticAlphabet.Length)];
                     }
-                    pop.Add(solution, 0);
+                    pop.Add((solution, 0));
                 }
             }
 
@@ -53,24 +53,26 @@ namespace Genetic_Algorithm {
         // For each individual, count the number of symbols in the solution that match the target string
         // Store this as the fitness of the individual (normalised by the target string length)
         // Maximum fitness is thus 1 (all symbols match); minimum fitness is 0 (no matches).
-        // IGNORE BELOW, C# DICTIONARY ORDER IS NONDETERMINISTIC
         // Sort the population by fitness with the best solution at the top of the list
         //     * this last step is important because it helps us track the best solution and
         // will also be useful when we implement elitism...
-        static Dictionary<string, float> Assess(Dictionary<string, float> pop, string target) {
+        static List<(string, float)> Assess(List<(string, float)> pop, string target) {
             float length = target.Length;
-            Dictionary<string, float> tempPopStore = new Dictionary<string, float>();
-            foreach(KeyValuePair<string, float> entry in pop) {
-                tempPopStore.Add(entry.Key, Matches(entry.Key, target) / length);
+            List<(string, float)> tempPopStore = new List<(string, float)>();
+            foreach((string, float) entry in pop) {
+                tempPopStore.Add((entry.Item1, Matches(entry.Item1, target) / length));
             }
+
+            tempPopStore.Sort((x, y) => y.Item2.CompareTo(x.Item2));
+
             return tempPopStore;
         }
 
-        static KeyValuePair<string, float> GetHighestInduvidual(Dictionary<string, float> pop) {
-            KeyValuePair<string, float> winner = pop.ElementAt(0);
-            float currentHighestFitness = winner.Value;
-            foreach (KeyValuePair<string, float> entry in pop) {
-                if (entry.Value > winner.Value) winner = entry;
+        static (string, float) GetHighestInduvidual(List<(string, float)> pop) {
+            (string, float) winner = pop[0];
+            float currentHighestFitness = winner.Item2;
+            foreach ((string, float) entry in pop) {
+                if (entry.Item2 > winner.Item2) winner = entry;
             }
 
             return winner;
@@ -79,19 +81,19 @@ namespace Genetic_Algorithm {
         // Run tournament selection to pick a parent solution
         // Consider a sample of tournament_size unique indivduals from the current population
         // Return the solution belonging to the winner (the individual with the highest fitness)
-        static string Tournament(Dictionary<string, float> pop, int tournamentSize) {
-            Dictionary<string, float> competitors = new Dictionary<string, float>();
-            Dictionary<string, float> selectionPool = new Dictionary<string, float>(pop);
+        static string Tournament(List<(string, float)> pop, int tournamentSize) {
+            List<(string, float)> competitors = new List<(string, float)>();
+            List<(string, float)> selectionPool = new List<(string, float)>(pop);
             Random rand = new Random();
 
             for (int i = 0; i < tournamentSize; i++) {
-                string randomKey = selectionPool.ElementAt(rand.Next(0, selectionPool.Count)).Key;
-                competitors.Add(randomKey, selectionPool[randomKey]);
-                selectionPool.Remove(randomKey);
+                (string, float) randomSelection = selectionPool.ElementAt(rand.Next(0, selectionPool.Count));
+                competitors.Add(randomSelection);
+                selectionPool.Remove(randomSelection);
             }
 
-            KeyValuePair<string, float> winner = GetHighestInduvidual(competitors);
-            return winner.Key;
+            (string, float) winner = GetHighestInduvidual(competitors);
+            return winner.Item1;
         }
 
         // Breed a new generation of solutions from the existing population
@@ -102,21 +104,21 @@ namespace Genetic_Algorithm {
         // always gets copied into the next generation at least once
         // We can opt to use 'crossover' (uniform or single point) which combines
         // two parent genotypes into one offspring
-        static Dictionary<string, float> Breed(Dictionary<string, float> pop, int tournamentSize, float crossover, bool uniform, bool elitism) {
+        static List<(string, float)> Breed(List<(string, float)> pop, int tournamentSize, float crossover, bool uniform, bool elitism) {
 
             Random rand = new Random();
-            Dictionary<string, float> offspring_pop = new Dictionary<string, float>();
+            List<(string, float)> offspring_pop = new List<(string, float)>();
 
-            if (elitism) offspring_pop.Add(GetHighestInduvidual(pop).Key, 0);
+            if (elitism) offspring_pop.Add((pop[0].Item1, 0));
 
             while (offspring_pop.Count < pop.Count) {
                 string mum = Tournament(pop, tournamentSize);
                 if (rand.NextDouble() < (double) crossover) {
                     string dad = Tournament(pop, tournamentSize);
-                    if (uniform) offspring_pop.Add(UniformCross(mum, dad), 0);
-                    else offspring_pop.Add(Cross(mum, dad), 0);
+                    if (uniform) offspring_pop.Add((UniformCross(mum, dad), 0));
+                    else offspring_pop.Add((Cross(mum, dad), 0));
                 } else {
-                    offspring_pop.Add(mum, 0);
+                    offspring_pop.Add((mum, 0));
                 }
             }
 
@@ -126,27 +128,27 @@ namespace Genetic_Algorithm {
         // Apply mutation to the population of new offspring
         // Each symbol in each solution may be replaced by a randomly chosen symbol from the alphabet
         // For each symbol in each solution the chance of this happening is set by the mutation parameter
-        static Dictionary<string, float> Mutate(Dictionary<string, float> pop, float mutation, string alphabet, bool elitism) {
+        static List<(string, float)> Mutate(List<(string, float)> pop, float mutation, string alphabet, bool elitism) {
             Random rand = new Random();
-            Dictionary<string, float> tempPopCopy = new Dictionary<string, float>(pop);
-            Dictionary<string, float> mutatedPop = new Dictionary<string, float>();
+            List<(string, float)> tempPopCopy = new List<(string, float)>(pop);
+            List<(string, float)> mutatedPop = new List<(string, float)>();
 
-            KeyValuePair<string, float> elite = GetHighestInduvidual(tempPopCopy);
+            (string, float) elite = tempPopCopy[0];
             if (elitism) {
-                tempPopCopy.Remove(elite.Key);
-                mutatedPop.Add(elite.Key, elite.Value);
+                tempPopCopy.Remove(elite);
+                mutatedPop.Add(elite);
             }
 
-            foreach(KeyValuePair<string, float> entry in tempPopCopy) {
+            foreach((string, float) entry in tempPopCopy) {
                 string newSolution = "";
-                foreach (char c in entry.Key) {
+                foreach (char c in entry.Item1) {
                     if (rand.NextDouble() < mutation) {
                         newSolution += alphabet[rand.Next(alphabet.Length)];
                     } else {
                         newSolution += c;
                     }
                 }
-                mutatedPop.Add(newSolution, entry.Value);
+                mutatedPop.Add((newSolution, entry.Item2));
             }
 
             return mutatedPop;
@@ -180,14 +182,14 @@ namespace Genetic_Algorithm {
         // now write out a measure of population "covergence", i.e., std dev of fitness,
         // and the match() between the best solutionand the median solution in the pop#
         // but that's not implemented here yet.)
-        static void WriteFitness(Dictionary<string, float> pop, int gen, string fileName) {
+        static void WriteFitness(List<(string, float)> pop, int gen, string fileName) {
 
             List<float> fitness = new List<float>();
-            foreach (KeyValuePair<string, float> entry in pop) {
-                fitness.Add(entry.Value);
+            foreach ((string, float) entry in pop) {
+                fitness.Add(entry.Item2);
             }
 
-            string line = $"{gen}: max:{GetHighestInduvidual(pop).Value}\n";
+            string line = $"{gen}: max:{pop[0].Item2}";
 
             if (fileName != "") {
                 using StreamWriter file = new StreamWriter(fileName, append: true);
@@ -217,18 +219,21 @@ namespace Genetic_Algorithm {
         // if we are writing stats and we want to write stats this generation:
         // write out some stats
         // Return the final generation count and the best individual from the final population
-        static (int, KeyValuePair<string, float>) DoTheGA(int popSize, int tournamentSize, float crossover, bool uniform, bool elitism, int maxGen, bool converged, int writeEvery, string fileName, string target, float m, string alphabet) {
+        static (int, (string, float)) DoTheGA(int popSize, int tournamentSize, float crossover, bool uniform, bool elitism, int maxGen, bool converged, int writeEvery, string fileName, string target, float m, string alphabet) {
             Random rand = new Random();
+            if (File.Exists(fileName)) {
+                File.Delete(fileName);
+            }
 
             float length = target.Length;
             float mutation = m / length;
 
-            Dictionary<string, float> pop = Initialise(popSize, (int)length, alphabet, converged);
+            List<(string, float)> pop = Initialise(popSize, (int)length, alphabet, converged);
             pop = Assess(pop, target);
 
             int generation = 0;
-            KeyValuePair<string, float> best = GetHighestInduvidual(pop);
-            while (generation < maxGen && best.Value < 1) {
+            (string, float) best = pop[0];
+            while (generation < maxGen && best.Item2 < 1) {
                 generation++;
                 pop = Breed(pop, tournamentSize, crossover, uniform, elitism);
                 pop = Mutate(pop, mutation, alphabet, elitism);
@@ -245,20 +250,20 @@ namespace Genetic_Algorithm {
         static void Main(string[] args) {
             int popSize = 100;
             int tournamentSize = 2;
-            float crossover = 1;
-            bool uniform = true;
+            float crossover = 0;
+            bool uniform = false;
             bool elitism = false;
             int maxGen = 1000;
             bool converged = false;
             int writeEvery = 1;
-            string fileName = "results.txt";
+            string fileName = "";
             string target = "methinks it is like a weasel";
             float m = 1;
             string alphabet = "abcdefghijklmnopqrstuvwxyz ";
 
-            (int, KeyValuePair<string, float>) results = DoTheGA(popSize, tournamentSize, crossover, uniform, elitism, maxGen, converged, writeEvery, fileName, target, m, alphabet);
+            (int, (string, float)) results = DoTheGA(popSize, tournamentSize, crossover, uniform, elitism, maxGen, converged, writeEvery, fileName, target, m, alphabet);
 
-            Console.WriteLine($"{results.Item1} generations yielded: '{results.Item2.Key}' ({results.Item2.Value})");
+            Console.WriteLine($"{results.Item1} generations yielded: '{results.Item2.Item1}' ({results.Item2.Item2})");
 
 
 
