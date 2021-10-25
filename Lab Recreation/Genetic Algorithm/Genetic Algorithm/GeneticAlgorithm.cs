@@ -189,7 +189,10 @@ namespace GeneticAlgorithm {
                 fitness.Add(entry.Item2);
             }
 
-            string line = $"{gen}: max:{pop[0].Item2}";
+            int maxDiff = pop[0].Item1.Length - Matches(pop[0].Item1, pop[pop.Count - 1].Item1);
+            int medDiff = pop[0].Item1.Length - Matches(pop[0].Item1, pop[pop.Count / 2].Item1);
+
+            string line = $"{gen}: max: {fitness.Max()}, min: {fitness.Min()}, mean: {fitness.Average()}, stdev: {Math.Sqrt(fitness.Average(v => Math.Pow(v - fitness.Average(), 2)))}, maxDiff: {maxDiff}, medDiff: {medDiff}";
 
             if (fileName != "") {
                 using StreamWriter file = new StreamWriter(fileName, append: true);
@@ -250,7 +253,7 @@ namespace GeneticAlgorithm {
         static void Main(string[] args) {
             int popSize = 100;
             int tournamentSize = 2;
-            float crossover = 0;
+            float crossover = 0.5f;
             bool uniform = false;
             bool elitism = false;
             int maxGen = 1000;
@@ -264,17 +267,6 @@ namespace GeneticAlgorithm {
             (int, (string, float)) results = DoTheGA(popSize, tournamentSize, crossover, uniform, elitism, maxGen, converged, writeEvery, fileName, target, m, alphabet);
 
             Console.WriteLine($"{results.Item1} generations yielded: '{results.Item2.Item1}' ({results.Item2.Item2})");
-
-
-
-
-            /*foreach (KeyValuePair<string, float> entry in pop) {
-                Console.WriteLine($"{entry.Key} : {entry.Value}");
-            }*/
-
-            /*Dictionary<string, float> testPop = Mutate(pop, 0.5f, alphabet, false);
-            Console.WriteLine($"{pop.ElementAt(0).Key} : {pop.ElementAt(0).Value}");
-            Console.WriteLine($"{testPop.ElementAt(0).Key} : {testPop.ElementAt(0).Value}");*/
 
             Console.ReadLine();
         }
