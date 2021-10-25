@@ -192,7 +192,7 @@ namespace GeneticAlgorithm {
             int maxDiff = pop[0].Item1.Length - Matches(pop[0].Item1, pop[pop.Count - 1].Item1);
             int medDiff = pop[0].Item1.Length - Matches(pop[0].Item1, pop[pop.Count / 2].Item1);
 
-            string line = $"{gen}: max: {fitness.Max()}, min: {fitness.Min()}, mean: {fitness.Average()}, stdev: {Math.Sqrt(fitness.Average(v => Math.Pow(v - fitness.Average(), 2)))}, maxDiff: {maxDiff}, medDiff: {medDiff}";
+            string line = $"{gen}: max: {Math.Round(fitness.Max(), 3)}, min: {Math.Round(fitness.Min(),3)}, mean: {Math.Round(fitness.Average(), 3)}, stdev: {Math.Round(Math.Sqrt(fitness.Average(v => Math.Pow(v - fitness.Average(), 2))), 3)}, maxDiff: {maxDiff}, medDiff: {medDiff}";
 
             if (fileName != "") {
                 using StreamWriter file = new StreamWriter(fileName, append: true);
@@ -251,6 +251,7 @@ namespace GeneticAlgorithm {
         }
 
         static void Main(string[] args) {
+            // Parameters for doing the GA
             int popSize = 100;
             int tournamentSize = 2;
             float crossover = 0.5f;
