@@ -10,7 +10,9 @@ public class GridManager : MonoBehaviour
     
     public List<InputField> gridManagementInputFields;
     public List<InputField> cellManagementInputFields;
-    public Button GenerateGridButton;
+    public Button generateGridButton;
+    public GameObject cellManagement;
+    public GameObject debugManagement;
 
     List<List<List<int>>> cells;
 
@@ -25,6 +27,8 @@ public class GridManager : MonoBehaviour
     private void Start() {
         cells = new List<List<List<int>>>();
         visualCells = new List<List<List<GameObject>>>();
+        cellManagement.SetActive(false);
+        debugManagement.SetActive(false);
     }
 
     void SetupCellGrid() {
@@ -64,12 +68,14 @@ public class GridManager : MonoBehaviour
             SetupVisualCellGrid();
             cellsVisualised = true;
         }
-        GenerateGridButton.interactable = false;
-        GenerateGridButton.GetComponentInChildren<Text>().text = "Grid Generated";
+        generateGridButton.interactable = false;
+        generateGridButton.GetComponentInChildren<Text>().text = "Grid Generated";
         foreach (InputField field in gridManagementInputFields) {
             field.interactable = false;
         }
         t.interactable = false;
+        cellManagement.SetActive(true);
+        debugManagement.SetActive(true);
     }
 
     void ChangeCell(int x, int y, int z, int value, bool visible) {
