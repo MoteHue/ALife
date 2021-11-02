@@ -8,29 +8,38 @@ public class SceneManagement : MonoBehaviour
 
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
-    public GridManagement gridManagement;
-    public CellManagement cellManagement;
-    public PheromoneManagement pheromoneManagement;
-    public DebugManagement debugManagement;
+    GridManagement gridManagement;
+    CellManagement cellManagement;
+    PheromoneManagement pheromoneManagement;
+    DebugManagement debugManagement;
+    VisualManagement visualManagement;
     public Transform cellsVisualParent;
     public Transform pherosVisualParent;
 
     bool cellsVisualised;
     bool pheromonesVisualised;
 
-    List<List<List<int>>> cells;
-    List<List<List<int>>> pheromones;
-    List<List<List<GameObject>>> visualCells;
-    List<List<List<GameObject>>> visualPheromones;
+    public List<List<List<int>>> cells;
+    public List<List<List<int>>> pheromones;
+    public List<List<List<GameObject>>> visualCells;
+    public List<List<List<GameObject>>> visualPheromones;
 
     private void Start() {
         cells = new List<List<List<int>>>();
         pheromones = new List<List<List<int>>>();
         visualCells = new List<List<List<GameObject>>>();
         visualPheromones = new List<List<List<GameObject>>>();
+
+        gridManagement = FindObjectOfType<GridManagement>();
+        cellManagement = FindObjectOfType<CellManagement>();
+        pheromoneManagement = FindObjectOfType<PheromoneManagement>();
+        debugManagement = FindObjectOfType<DebugManagement>();
+        visualManagement = FindObjectOfType<VisualManagement>();
+
         cellManagement.gameObject.SetActive(false);
         pheromoneManagement.gameObject.SetActive(false);
         debugManagement.gameObject.SetActive(false);
+        visualManagement.gameObject.SetActive(false);
     }
     
     public void ButtonGenerateGrid(Toggle t) {
@@ -57,6 +66,7 @@ public class SceneManagement : MonoBehaviour
         cellManagement.gameObject.SetActive(true);
         pheromoneManagement.gameObject.SetActive(true);
         debugManagement.gameObject.SetActive(true);
+        visualManagement.gameObject.SetActive(true);
     }
 
     public void ChangeCell(int x, int y, int z, int value, bool visible) {
@@ -78,7 +88,7 @@ public class SceneManagement : MonoBehaviour
     }
     
     public void ChangePheromone(int x, int y, int z, int value, bool visible) {
-        cells[x][y][z] = value;
+        pheromones[x][y][z] = value;
         if (pheromonesVisualised) {
             PheromoneData phero = visualPheromones[x][y][z].GetComponent<PheromoneData>();
             phero.ActivateMesh(visible);
@@ -103,6 +113,52 @@ public class SceneManagement : MonoBehaviour
         debugManagement.DebugLogBigOlList("Pheromones", pheromones);
     }
 
-    
+    public void ToggleCells() {
+        cellsVisualised = !cellsVisualised;
+        if (cellsVisualised) {
+            for (int x = 0; x < gridManagement.width; x++) {
+                for (int y = 0; y < gridManagement.height; y++) {
+                    for (int z = 0; z < gridManagement.depth; z++) {
+                        if (cells[x][y][z] != 0) visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(true);
+                    }
+                }
+            }
+        } else {
+            for (int x = 0; x < gridManagement.width; x++) {
+                for (int y = 0; y < gridManagement.height; y++) {
+                    for (int z = 0; z < gridManagement.depth; z++) {
+                        visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(false);
+                    }
+                }
+            }
+        }
+        Text buttonText = visualManagement.showCells.GetComponentInChildren<Text>();
+        if (cellsVisualised) buttonText.text = "Hide Cells";
+        else buttonText.text = "Show Cells";
+    }
+
+    public void TogglePheros() {
+        pheromonesVisualised = !pheromonesVisualised;
+        if (pheromonesVisualised) {
+            for (int x = 0; x < gridManagement.width; x++) {
+                for (int y = 0; y < gridManagement.height; y++) {
+                    for (int z = 0; z < gridManagement.depth; z++) {
+                        if (pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(true);
+                    }
+                }
+            }
+        } else {
+            for (int x = 0; x < gridManagement.width; x++) {
+                for (int y = 0; y < gridManagement.height; y++) {
+                    for (int z = 0; z < gridManagement.depth; z++) {
+                        visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(false);
+                    }
+                }
+            }
+        }
+        Text buttonText = visualManagement.showPheros.GetComponentInChildren<Text>();
+        if (pheromonesVisualised) buttonText.text = "Hide Pheromones";
+        else buttonText.text = "Show Pheromones";
+    }
 
 }

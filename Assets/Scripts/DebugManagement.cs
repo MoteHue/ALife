@@ -7,7 +7,11 @@ public class DebugManagement : MonoBehaviour
 {
     public Button debugLogCells;
     public Button debugLogPheromones;
-    public GridManagement gridManagement;
+    GridManagement gridManagement;
+
+    private void Start() {
+        gridManagement = FindObjectOfType<GridManagement>();
+    }
 
     public void DebugLogBigOlList(string title, List<List<List<int>>> list) {
         string debugString1 = "";
