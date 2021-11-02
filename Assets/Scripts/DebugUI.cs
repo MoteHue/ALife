@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class DebugManagement : MonoBehaviour
+public class DebugUI : MonoBehaviour
 {
     public Button debugLogCells;
     public Button debugLogPheromones;
-    GridManagement gridManagement;
+    GridUI gridManagement;
 
     private void Start() {
-        gridManagement = FindObjectOfType<GridManagement>();
+        gridManagement = FindObjectOfType<GridUI>();
     }
 
     public void DebugLogBigOlList(string title, List<List<List<int>>> list) {
