@@ -12,16 +12,36 @@ public class GridManager : MonoBehaviour
     public List<InputField> cellManagementInputFields;
     public Button GenerateGridButton;
 
-    List<List<List<GameObject>>> cells;
+    List<List<List<int>>> cells;
+
+    List<List<List<GameObject>>> visualCells;
     int height;
     int width;
     int depth;
 
+    bool cellsVisualised;
+    bool pheromonesVisualised;
+
     private void Start() {
-        cells = new List<List<List<GameObject>>>();
+        cells = new List<List<List<int>>>();
+        visualCells = new List<List<List<GameObject>>>();
     }
 
     void SetupCellGrid() {
+        for (int x = 0; x < width; x++) {
+            List<List<int>> yList = new List<List<int>>();
+            for (int y = 0; y < height; y++) {
+                List<int> zList = new List<int>();
+                for (int z = 0; z < depth; z++) {
+                    zList.Add(0);
+                }
+                yList.Add(zList);
+            }
+            cells.Add(yList);
+        }
+    }
+
+    void SetupVisualCellGrid() {
         for (int x = 0; x < width; x++) {
             List<List<GameObject>> yList = new List<List<GameObject>>();
             for (int y = 0; y < height; y++) {
@@ -31,7 +51,7 @@ public class GridManager : MonoBehaviour
                 }
                 yList.Add(zList);
             }
-            cells.Add(yList);
+            visualCells.Add(yList);
         }
     }
 
@@ -40,12 +60,20 @@ public class GridManager : MonoBehaviour
         height = int.Parse(gridManagementInputFields[1].text);
         depth = int.Parse(gridManagementInputFields[2].text);
         SetupCellGrid();
+        if (cellsVisualised) SetupVisualCellGrid();
         GenerateGridButton.interactable = false;
     }
 
-    void ChangeCell(int x, int y, int z, bool visible) {
-        CellData cell = cells[x][y][z].GetComponent<CellData>();
-        cell.ActivateMesh(visible);
+    public void ChangeCellVisualised(bool b) {
+        cellsVisualised = b;
+    }
+
+    void ChangeCell(int x, int y, int z, int value, bool visible) {
+        cells[x][y][z] = value;
+        if (cellsVisualised) {
+            CellData cell = visualCells[x][y][z].GetComponent<CellData>();
+            cell.ActivateMesh(visible);
+        }   
     }
 
     public void ButtonChangeCell(bool b) {
@@ -53,7 +81,8 @@ public class GridManager : MonoBehaviour
         int y = int.Parse(cellManagementInputFields[1].text);
         int z = int.Parse(cellManagementInputFields[2].text);
         if (x>=0 && x<width && y>=0 && y<height && z>=0 && z<depth) {
-            ChangeCell(x, y, z, b);
+            if (b) ChangeCell(x, y, z, 1, b);
+            else ChangeCell(x, y, z, 0, b);
         }
     }
 
