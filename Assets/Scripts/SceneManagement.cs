@@ -53,6 +53,12 @@ public class SceneManagement : MonoBehaviour
             visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
             cellsVisualised = true;
             pheromonesVisualised = true;
+
+            // Enable other UI elements.
+            cellUI.gameObject.SetActive(true);
+            pheromoneUI.gameObject.SetActive(true);
+            debugUI.gameObject.SetActive(true);
+            visualUI.gameObject.SetActive(true);
         }
 
         // Disable UI elements after use.
@@ -61,13 +67,7 @@ public class SceneManagement : MonoBehaviour
         foreach (InputField field in gridUI.coords) {
             field.interactable = false;
         }
-        t.interactable = false;
-
-        // Enable other UI elements.
-        cellUI.gameObject.SetActive(true);
-        pheromoneUI.gameObject.SetActive(true);
-        debugUI.gameObject.SetActive(true);
-        visualUI.gameObject.SetActive(true);
+        t.interactable = false;        
     }
 
     public void ChangeCell(int x, int y, int z, int value, bool visible) {

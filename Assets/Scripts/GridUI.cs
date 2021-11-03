@@ -51,7 +51,7 @@ public class GridUI : MonoBehaviour
             for (int y = 0; y < height; y++) {
                 List<GameObject> zs = new List<GameObject>();
                 for (int z = 0; z < depth; z++) {
-                    zs.Add(Instantiate(prefab, transform.position + new Vector3(x, y, z), transform.rotation, parent));
+                    zs.Add(Instantiate(prefab, new Vector3(x, y, z), transform.rotation, parent));
                 }
                 ys.Add(zs);
             }
