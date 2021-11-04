@@ -8,6 +8,7 @@ public class GridUI : MonoBehaviour
     public List<InputField> coords;
     public Toggle visualise;
     public Button generateGrid;
+    public Button generateFromFile;
 
     public int width;
     public int height;
@@ -28,7 +29,7 @@ public class GridUI : MonoBehaviour
         depth = int.Parse(coords[2].text);
     }
 
-    public List<List<List<int>>> GenerateGrid() { 
+    public List<List<List<int>>> GenerateEmptyGrid() { 
         List<List<List<int>>> returnList = new List<List<List<int>>>();
         for (int x = 0; x < width; x++) {
             List<List<int>> yList = new List<List<int>>();

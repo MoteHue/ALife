@@ -2,10 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Text.Json;
+using System.IO;
 
 public class SceneManagement : MonoBehaviour
 {
 
+    public string fileName = "test";
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
     GridUI gridUI;
@@ -42,32 +45,74 @@ public class SceneManagement : MonoBehaviour
         visualUI.gameObject.SetActive(false);
     }
     
-    public void ButtonGenerateGrid(Toggle t) {
-        // Setup variables.
-        if (!gridUI.coordsValid()) return;
-        gridUI.SetWHD();
-        cells = gridUI.GenerateGrid();
-        pheromones = gridUI.GenerateGrid();
-        if (t.isOn) {
-            visualCells = gridUI.GenerateVisualGrid(cellPrefab, cellsVisualParent);
-            visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
-            cellsVisualised = true;
-            pheromonesVisualised = true;
+    void GenerateVisualGrid() {
+        visualCells = gridUI.GenerateVisualGrid(cellPrefab, cellsVisualParent);
+        visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
+        cellsVisualised = true;
+        pheromonesVisualised = true;
 
-            // Enable other UI elements.
-            cellUI.gameObject.SetActive(true);
-            pheromoneUI.gameObject.SetActive(true);
-            debugUI.gameObject.SetActive(true);
-            visualUI.gameObject.SetActive(true);
+        // Enable other UI elements.
+        cellUI.gameObject.SetActive(true);
+        pheromoneUI.gameObject.SetActive(true);
+        debugUI.gameObject.SetActive(true);
+        visualUI.gameObject.SetActive(true);
+    }
+    
+    public void SaveCurrentGridToFile() {
+        WriteCurrentGridToFile($"results/{fileName}.json");
+    }
+    
+    void WriteCurrentGridToFile(string filePath) {
+        List<List<List<List<int>>>> data = new List<List<List<List<int>>>> { cells, pheromones };
+        string json = JsonSerializer.Serialize(data);
+        File.WriteAllText(filePath, json);
+    }
+
+    void ReadGridFromFile(string filePath) {
+        // Read from file
+        string json = File.ReadAllText(filePath);
+        List<List<List<List<int>>>> data = JsonSerializer.Deserialize<List<List<List<List<int>>>>>(json);
+        cells = data[0];
+        pheromones = data[1];
+
+
+        gridUI.width = cells.Count;
+        gridUI.height = cells[0].Count;
+        gridUI.depth = cells[0][0].Count;
+    }
+
+    void GenerateGrid(Toggle visualToggle, bool useFile) {
+        // Setup variables.
+        if (useFile) {
+            ReadGridFromFile($"results/{fileName}.json");
+        } else {
+            if (!gridUI.coordsValid()) return;
+            gridUI.SetWHD();
+            cells = gridUI.GenerateEmptyGrid();
+            pheromones = gridUI.GenerateEmptyGrid();
+        }
+        if (visualToggle.isOn) {
+            GenerateVisualGrid();
+            visualiseCells();
+            visualisePheros();
         }
 
         // Disable UI elements after use.
         gridUI.generateGrid.interactable = false;
+        gridUI.generateFromFile.interactable = false;
         gridUI.generateGrid.GetComponentInChildren<Text>().text = "Grid Generated";
         foreach (InputField field in gridUI.coords) {
             field.interactable = false;
         }
-        t.interactable = false;        
+        visualToggle.interactable = false;
+    }
+
+    public void ButtonGenerateFromFile(Toggle visualToggle) {
+        GenerateGrid(visualToggle, true);
+    } 
+
+    public void ButtonGenerateGrid(Toggle visualToggle) {
+        GenerateGrid(visualToggle, false);
     }
 
     public void ChangeCell(int x, int y, int z, int value, bool visible) {
@@ -88,7 +133,7 @@ public class SceneManagement : MonoBehaviour
             else ChangeCell(x, y, z, 0, b);
         }
     }
-    
+
     public void ChangePheromone(int x, int y, int z, int value, bool visible) {
         pheromones[x][y][z] = value;
         if (pheromonesVisualised) {
@@ -116,8 +161,7 @@ public class SceneManagement : MonoBehaviour
         debugUI.DebugLogBigOlList("Pheromones", pheromones);
     }
 
-    public void ToggleCells() {
-        cellsVisualised = !cellsVisualised;
+    void visualiseCells() {
         if (cellsVisualised) {
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
@@ -135,13 +179,17 @@ public class SceneManagement : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void ToggleCells() {
+        cellsVisualised = !cellsVisualised;
+        visualiseCells();
         Text buttonText = visualUI.showCells.GetComponentInChildren<Text>();
         if (cellsVisualised) buttonText.text = "Hide Cells";
         else buttonText.text = "Show Cells";
     }
 
-    public void TogglePheros() {
-        pheromonesVisualised = !pheromonesVisualised;
+    void visualisePheros() {
         if (pheromonesVisualised) {
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
@@ -159,6 +207,11 @@ public class SceneManagement : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void TogglePheros() {
+        pheromonesVisualised = !pheromonesVisualised;
+        visualisePheros();
         Text buttonText = visualUI.showPheros.GetComponentInChildren<Text>();
         if (pheromonesVisualised) buttonText.text = "Hide Pheromones";
         else buttonText.text = "Show Pheromones";
