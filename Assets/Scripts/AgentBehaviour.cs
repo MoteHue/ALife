@@ -90,22 +90,22 @@ public class AgentBehaviour : MonoBehaviour
 
     // 3. One face of the site must neighbour three horizontally adjacent locations that each contain material.
     bool Rule3(int x, int y, int z) {
-        if (x < gridUI.width - 2 && z > 0 && z < gridUI.depth) {
+        if (x < gridUI.width - 2 && z > 0 && z < gridUI.depth - 2) {
             if (sceneManagement.cells[x + 1][y][z - 1] != 0 && sceneManagement.cells[x + 1][y][z] != 0 && sceneManagement.cells[x + 1][y][z + 1] != 0) {
                 return true;
             }
         }
-        if (x > 0 && z > 0 && z < gridUI.depth) {
+        if (x > 0 && z > 0 && z < gridUI.depth - 2) {
             if (sceneManagement.cells[x - 1][y][z - 1] != 0 && sceneManagement.cells[x - 1][y][z] != 0 && sceneManagement.cells[x - 1][y][z + 1] != 0) {
                 return true;
             }
         }
-        if (z < gridUI.depth - 2 && x > 0 && x < gridUI.width) {
+        if (z < gridUI.depth - 2 && x > 0 && x < gridUI.width - 2) {
             if (sceneManagement.cells[x - 1][y][z + 1] != 0 && sceneManagement.cells[x][y][z + 1] != 0 && sceneManagement.cells[x + 1][y][z + 1] != 0) {
                 return true;
             }
         }
-        if (z > 0 && x > 0 && x < gridUI.width) {
+        if (z > 0 && x > 0 && x < gridUI.width - 2) {
             if (sceneManagement.cells[x - 1][y][z - 1] != 0 && sceneManagement.cells[x][y][z - 1] != 0 && sceneManagement.cells[x + 1][y][z - 1] != 0) {
                 return true;
             }
