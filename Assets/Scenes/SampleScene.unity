@@ -5083,7 +5083,7 @@ MonoBehaviour:
   fileName: test
   cellPrefab: {fileID: 8627127804314426534, guid: 1bae49e93d2713844a393f07d4bd1c75, type: 3}
   pheromonePrefab: {fileID: 8627127804314426534, guid: d9abb0abfef2b46409c7dfcf698b412d, type: 3}
-  basePrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
+  floorPrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
   cellsVisualParent: {fileID: 142968317}
   pherosVisualParent: {fileID: 1941711665}
 --- !u!4 &1184344180

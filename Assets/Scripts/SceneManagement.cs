@@ -11,7 +11,7 @@ public class SceneManagement : MonoBehaviour
     public string fileName = "test";
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
-    public GameObject basePrefab;
+    public GameObject floorPrefab;
     GridUI gridUI;
     CellUI cellUI;
     PheromoneUI pheromoneUI;
@@ -25,6 +25,7 @@ public class SceneManagement : MonoBehaviour
 
     public List<List<List<int>>> cells;
     public List<List<List<int>>> pheromones;
+    public List<List<List<bool>>> agentLocations;
     public List<List<List<GameObject>>> visualCells;
     public List<List<List<GameObject>>> visualPheromones;
 
@@ -46,9 +47,23 @@ public class SceneManagement : MonoBehaviour
         visualUI.gameObject.SetActive(false);
     }
     
+    void GenerateEmptyAgentLocations() {
+        for (int x = 0; x < gridUI.width; x++) {
+            List<List<bool>> yList = new List<List<bool>>();
+            for (int y = 0; y < gridUI.height; y++) {
+                List<bool> zList = new List<bool>();
+                for (int z = 0; z < gridUI.depth; z++) {
+                    zList.Add(false);
+                }
+                yList.Add(zList);
+            }
+            agentLocations.Add(yList);
+        }
+    }
+
     void GenerateVisualGrid() {
-        GameObject floor = Instantiate(basePrefab, transform.position, transform.rotation);
-        floor.GetComponent<Base>().SetScale(gridUI.width, gridUI.height, gridUI.depth);
+        GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
+        floor.GetComponent<Floor>().SetScale(gridUI.width, gridUI.height, gridUI.depth);
 
         visualCells = gridUI.GenerateVisualGrid(cellPrefab, cellsVisualParent);
         visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
@@ -100,6 +115,8 @@ public class SceneManagement : MonoBehaviour
             visualiseCells();
             visualisePheros();
         }
+
+        GenerateEmptyAgentLocations();
 
         // Disable UI elements after use.
         gridUI.generateGrid.interactable = false;
