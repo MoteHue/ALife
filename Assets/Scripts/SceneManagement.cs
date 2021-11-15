@@ -19,6 +19,7 @@ public class SceneManagement : MonoBehaviour
     DebugUI debugUI;
     VisualUI visualUI;
     AgentUI agentUI;
+    SimulationUI simulationUI;
     public Transform cellsVisualParent;
     public Transform pherosVisualParent;
     public Transform agentsVisualParent;
@@ -34,7 +35,7 @@ public class SceneManagement : MonoBehaviour
     public List<List<List<GameObject>>> visualPheromones;
     public List<GameObject> visualAgents;
 
-    List<AgentBehaviour> agents;
+    public List<AgentBehaviour> agents;
 
     private void Start() {
         cells = new List<List<List<int>>>();
@@ -50,12 +51,14 @@ public class SceneManagement : MonoBehaviour
         debugUI = FindObjectOfType<DebugUI>();
         visualUI = FindObjectOfType<VisualUI>();
         agentUI = FindObjectOfType<AgentUI>();
+        simulationUI = FindObjectOfType<SimulationUI>();
 
         cellUI.gameObject.SetActive(false);
         pheromoneUI.gameObject.SetActive(false);
         debugUI.gameObject.SetActive(false);
         visualUI.gameObject.SetActive(false);
         agentUI.gameObject.SetActive(false);
+        simulationUI.gameObject.SetActive(false);
     }
     
     void GenerateEmptyAgentLocations() {
@@ -121,6 +124,7 @@ public class SceneManagement : MonoBehaviour
         debugUI.gameObject.SetActive(true);
         visualUI.gameObject.SetActive(true);
         agentUI.gameObject.SetActive(true);
+        simulationUI.gameObject.SetActive(true);
     }
     
     public void ButtonSaveCurrentGridToFile() {
