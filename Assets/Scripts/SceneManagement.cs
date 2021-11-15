@@ -25,12 +25,14 @@ public class SceneManagement : MonoBehaviour
 
     bool cellsVisualised;
     bool pheromonesVisualised;
+    bool agentsVisualised;
 
     public List<List<List<int>>> cells;
     public List<List<List<int>>> pheromones;
     public List<List<List<bool>>> agentLocations;
     public List<List<List<GameObject>>> visualCells;
     public List<List<List<GameObject>>> visualPheromones;
+    public List<GameObject> visualAgents;
 
     List<AgentBehaviour> agents;
 
@@ -91,13 +93,16 @@ public class SceneManagement : MonoBehaviour
             int y = Random.Range(0, gridUI.height);
             int z = Random.Range(0, gridUI.depth);
             if (!agentLocations[x][y][z]) {
-                AgentBehaviour agent = Instantiate(agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent).GetComponent<AgentBehaviour>();
-                agent.pos = new Vector3Int(x, y, z);
-                agents.Add(agent);
+                GameObject agent = Instantiate(agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
+                AgentBehaviour agentBehaviour = agent.GetComponent<AgentBehaviour>();
+                agentBehaviour.pos = new Vector3Int(x, y, z);
+                visualAgents.Add(agent);
+                agents.Add(agentBehaviour);
                 agentLocations[x][y][z] = true;
                 counter++;
             }
         }
+        visualiseAgents();
     }
 
     void GenerateVisualGrid() {
@@ -108,6 +113,7 @@ public class SceneManagement : MonoBehaviour
         visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
         cellsVisualised = true;
         pheromonesVisualised = true;
+        agentsVisualised = true;
 
         // Enable other UI elements.
         cellUI.gameObject.SetActive(true);
@@ -276,6 +282,20 @@ public class SceneManagement : MonoBehaviour
         Text buttonText = visualUI.showPheros.GetComponentInChildren<Text>();
         if (pheromonesVisualised) buttonText.text = "Hide Pheromones";
         else buttonText.text = "Show Pheromones";
+    }
+
+    void visualiseAgents() {
+        foreach (GameObject agent in visualAgents) {
+            agent.GetComponent<MeshRenderer>().enabled = agentsVisualised;
+        }
+    }
+
+    public void ToggleAgents() {
+        agentsVisualised = !agentsVisualised;
+        visualiseAgents();
+        Text buttonText = visualUI.showAgents.GetComponentInChildren<Text>();
+        if (agentsVisualised) buttonText.text = "Hide Agents";
+        else buttonText.text = "Show Agents";
     }
 
 }

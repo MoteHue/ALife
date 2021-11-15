@@ -6,5 +6,6 @@ using UnityEngine.UI;
 public class VisualUI : MonoBehaviour
 {
     public Button showCells;
-    public Button showPheros;    
+    public Button showPheros;
+    public Button showAgents;
 }
