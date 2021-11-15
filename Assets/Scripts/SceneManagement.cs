@@ -9,6 +9,7 @@ public class SceneManagement : MonoBehaviour
 {
 
     public string fileName = "test";
+    public Simulation sim;
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
     public GameObject floorPrefab;
@@ -28,22 +29,15 @@ public class SceneManagement : MonoBehaviour
     bool pheromonesVisualised;
     bool agentsVisualised;
 
-    public List<List<List<int>>> cells;
-    public List<List<List<int>>> pheromones;
-    public List<List<List<bool>>> agentLocations;
+    
     public List<List<List<GameObject>>> visualCells;
     public List<List<List<GameObject>>> visualPheromones;
     public List<GameObject> visualAgents;
-
-    public List<AgentBehaviour> agents;
+    
 
     private void Start() {
-        cells = new List<List<List<int>>>();
-        pheromones = new List<List<List<int>>>();
         visualCells = new List<List<List<GameObject>>>();
         visualPheromones = new List<List<List<GameObject>>>();
-        agentLocations = new List<List<List<bool>>>();
-        agents = new List<AgentBehaviour>();
 
         gridUI = FindObjectOfType<GridUI>();
         cellUI = FindObjectOfType<CellUI>();
@@ -53,14 +47,18 @@ public class SceneManagement : MonoBehaviour
         agentUI = FindObjectOfType<AgentUI>();
         simulationUI = FindObjectOfType<SimulationUI>();
 
-        cellUI.gameObject.SetActive(false);
-        pheromoneUI.gameObject.SetActive(false);
-        debugUI.gameObject.SetActive(false);
-        visualUI.gameObject.SetActive(false);
-        agentUI.gameObject.SetActive(false);
-        simulationUI.gameObject.SetActive(false);
+        ToggleExtraUI(false);
     }
     
+    void ToggleExtraUI(bool b) {
+        cellUI.gameObject.SetActive(b);
+        pheromoneUI.gameObject.SetActive(b);
+        debugUI.gameObject.SetActive(b);
+        visualUI.gameObject.SetActive(b);
+        agentUI.gameObject.SetActive(b);
+        simulationUI.gameObject.SetActive(b);
+    }
+
     void GenerateEmptyAgentLocations() {
         for (int x = 0; x < gridUI.width; x++) {
             List<List<bool>> yList = new List<List<bool>>();
@@ -71,7 +69,7 @@ public class SceneManagement : MonoBehaviour
                 }
                 yList.Add(zList);
             }
-            agentLocations.Add(yList);
+            sim.agentLocations.Add(yList);
         }
     }
 
@@ -95,13 +93,13 @@ public class SceneManagement : MonoBehaviour
             int x = Random.Range(0, gridUI.width);
             int y = Random.Range(0, gridUI.height);
             int z = Random.Range(0, gridUI.depth);
-            if (!agentLocations[x][y][z]) {
+            if (!sim.agentLocations[x][y][z]) {
                 GameObject agent = Instantiate(agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
                 AgentBehaviour agentBehaviour = agent.GetComponent<AgentBehaviour>();
                 agentBehaviour.pos = new Vector3Int(x, y, z);
                 visualAgents.Add(agent);
-                agents.Add(agentBehaviour);
-                agentLocations[x][y][z] = true;
+                sim.agents.Add(agentBehaviour);
+                sim.agentLocations[x][y][z] = true;
                 counter++;
             }
         }
@@ -119,12 +117,7 @@ public class SceneManagement : MonoBehaviour
         agentsVisualised = true;
 
         // Enable other UI elements.
-        cellUI.gameObject.SetActive(true);
-        pheromoneUI.gameObject.SetActive(true);
-        debugUI.gameObject.SetActive(true);
-        visualUI.gameObject.SetActive(true);
-        agentUI.gameObject.SetActive(true);
-        simulationUI.gameObject.SetActive(true);
+        ToggleExtraUI(true);
     }
     
     public void ButtonSaveCurrentGridToFile() {
@@ -132,7 +125,7 @@ public class SceneManagement : MonoBehaviour
     }
     
     void WriteCurrentGridToFile(string filePath) {
-        List<List<List<List<int>>>> data = new List<List<List<List<int>>>> { cells, pheromones };
+        List<List<List<List<int>>>> data = new List<List<List<List<int>>>> { sim.cells, sim.pheromones };
         string json = JsonSerializer.Serialize(data);
         File.WriteAllText(filePath, json);
     }
@@ -141,13 +134,13 @@ public class SceneManagement : MonoBehaviour
         // Read from file
         string json = File.ReadAllText(filePath);
         List<List<List<List<int>>>> data = JsonSerializer.Deserialize<List<List<List<List<int>>>>>(json);
-        cells = data[0];
-        pheromones = data[1];
+        sim.cells = data[0];
+        sim.pheromones = data[1];
 
 
-        gridUI.width = cells.Count;
-        gridUI.height = cells[0].Count;
-        gridUI.depth = cells[0][0].Count;
+        gridUI.width = sim.cells.Count;
+        gridUI.height = sim.cells[0].Count;
+        gridUI.depth = sim.cells[0][0].Count;
     }
 
     void GenerateGrid(Toggle visualToggle, bool useFile) {
@@ -157,8 +150,8 @@ public class SceneManagement : MonoBehaviour
         } else {
             if (!gridUI.coordsValid()) return;
             gridUI.SetWHD();
-            cells = gridUI.GenerateEmptyGrid();
-            pheromones = gridUI.GenerateEmptyGrid();
+            sim.cells = gridUI.GenerateEmptyGrid();
+            sim.pheromones = gridUI.GenerateEmptyGrid();
         }
         if (visualToggle.isOn) {
             GenerateVisualGrid();
@@ -187,7 +180,7 @@ public class SceneManagement : MonoBehaviour
     }
 
     public void ChangeCell(int x, int y, int z, int value, bool visible) {
-        cells[x][y][z] = value;
+        sim.cells[x][y][z] = value;
         if (cellsVisualised) {
             CellData cell = visualCells[x][y][z].GetComponent<CellData>();
             cell.ActivateMesh(visible);
@@ -206,7 +199,7 @@ public class SceneManagement : MonoBehaviour
     }
 
     public void ChangePheromone(int x, int y, int z, int value, bool visible) {
-        pheromones[x][y][z] = value;
+        sim.pheromones[x][y][z] = value;
         if (pheromonesVisualised) {
             PheromoneData phero = visualPheromones[x][y][z].GetComponent<PheromoneData>();
             phero.ActivateMesh(visible);
@@ -225,11 +218,11 @@ public class SceneManagement : MonoBehaviour
     }
 
     public void DebugLogCells() {
-        debugUI.DebugLogBigOlList("Cells" ,cells);
+        debugUI.DebugLogBigOlList("Cells", sim.cells);
     }
 
     public void DebugLogPheromones() {
-        debugUI.DebugLogBigOlList("Pheromones", pheromones);
+        debugUI.DebugLogBigOlList("Pheromones", sim.pheromones);
     }
 
     void visualiseCells() {
@@ -237,7 +230,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        if (cells[x][y][z] != 0) visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(true);
+                        if (sim.cells[x][y][z] != 0) visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(true);
                     }
                 }
             }
@@ -265,7 +258,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        if (pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(true);
+                        if (sim.pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(true);
                     }
                 }
             }

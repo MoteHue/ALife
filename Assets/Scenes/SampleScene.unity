@@ -5652,6 +5652,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fileName: test
+  sim: {fileID: 0}
   cellPrefab: {fileID: 8627127804314426534, guid: 1bae49e93d2713844a393f07d4bd1c75, type: 3}
   pheromonePrefab: {fileID: 8627127804314426534, guid: d9abb0abfef2b46409c7dfcf698b412d, type: 3}
   floorPrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
@@ -5660,7 +5661,6 @@ MonoBehaviour:
   pherosVisualParent: {fileID: 1941711665}
   agentsVisualParent: {fileID: 1913152792}
   visualAgents: []
-  agents: []
 --- !u!4 &1184344180
 Transform:
   m_ObjectHideFlags: 0
@@ -6104,7 +6104,7 @@ Transform:
   - {fileID: 1030588757}
   - {fileID: 1165668009}
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1334435383
 GameObject:
@@ -6218,6 +6218,7 @@ MonoBehaviour:
   simulationUI: {fileID: 2008836446}
   callBackCounter: 0
   runSimulation: 0
+  agents: []
 --- !u!4 &1341202100
 Transform:
   m_ObjectHideFlags: 0
@@ -6230,7 +6231,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 6
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1341643332
 GameObject:

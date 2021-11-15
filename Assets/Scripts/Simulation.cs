@@ -6,22 +6,33 @@ public class Simulation : MonoBehaviour
 {
     public SceneManagement sceneManagement;
     public SimulationUI simulationUI;
-    int timestep = 0;
     public int callBackCounter;
-    int agentCount;
     public bool runSimulation;
 
+    public List<List<List<int>>> cells;
+    public List<List<List<int>>> pheromones;
+    public List<List<List<bool>>> agentLocations;
+    public List<AgentBehaviour> agents;
+
+    int timestep = 0;
+
+
+    private void Start() {
+        cells = new List<List<List<int>>>();
+        pheromones = new List<List<List<int>>>();
+        agentLocations = new List<List<List<bool>>>();
+        agents = new List<AgentBehaviour>();
+    }
 
     public void StartSimulation() {
         runSimulation = true;
         simulationUI.nextTimestepButton.interactable = false;
-        agentCount = sceneManagement.agents.Count;
         StartCoroutine(nameof(Simulate));
     }
 
     public void StepThroughTime() {
         timestep++;
-        foreach (AgentBehaviour agent in sceneManagement.agents) {
+        foreach (AgentBehaviour agent in agents) {
             agent.OnTimestep();
         }
     }
@@ -30,7 +41,7 @@ public class Simulation : MonoBehaviour
         while (runSimulation) {
             callBackCounter = 0;
             StepThroughTime();
-            yield return new WaitWhile(() => callBackCounter < agentCount);
+            yield return new WaitWhile(() => callBackCounter < agents.Count);
             yield return new WaitForSecondsRealtime(0.1f);
         }
         
