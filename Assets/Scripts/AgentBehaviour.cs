@@ -9,7 +9,6 @@ public class AgentBehaviour : MonoBehaviour
 
     private void Start() {
         sceneManagement = FindObjectOfType<SceneManagement>();
-        if (pos == null) pos = new Vector3Int(0, 0, 0);
     }
 
     public void OnTimestep() {

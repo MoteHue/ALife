@@ -12,13 +12,16 @@ public class SceneManagement : MonoBehaviour
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
     public GameObject floorPrefab;
+    public GameObject agentPrefab;
     GridUI gridUI;
     CellUI cellUI;
     PheromoneUI pheromoneUI;
     DebugUI debugUI;
     VisualUI visualUI;
+    AgentUI agentUI;
     public Transform cellsVisualParent;
     public Transform pherosVisualParent;
+    public Transform agentsVisualParent;
 
     bool cellsVisualised;
     bool pheromonesVisualised;
@@ -29,22 +32,28 @@ public class SceneManagement : MonoBehaviour
     public List<List<List<GameObject>>> visualCells;
     public List<List<List<GameObject>>> visualPheromones;
 
+    List<AgentBehaviour> agents;
+
     private void Start() {
         cells = new List<List<List<int>>>();
         pheromones = new List<List<List<int>>>();
         visualCells = new List<List<List<GameObject>>>();
         visualPheromones = new List<List<List<GameObject>>>();
+        agentLocations = new List<List<List<bool>>>();
+        agents = new List<AgentBehaviour>();
 
         gridUI = FindObjectOfType<GridUI>();
         cellUI = FindObjectOfType<CellUI>();
         pheromoneUI = FindObjectOfType<PheromoneUI>();
         debugUI = FindObjectOfType<DebugUI>();
         visualUI = FindObjectOfType<VisualUI>();
+        agentUI = FindObjectOfType<AgentUI>();
 
         cellUI.gameObject.SetActive(false);
         pheromoneUI.gameObject.SetActive(false);
         debugUI.gameObject.SetActive(false);
         visualUI.gameObject.SetActive(false);
+        agentUI.gameObject.SetActive(false);
     }
     
     void GenerateEmptyAgentLocations() {
@@ -58,6 +67,36 @@ public class SceneManagement : MonoBehaviour
                 yList.Add(zList);
             }
             agentLocations.Add(yList);
+        }
+    }
+
+    public void ButtonAddAgents(InputField noOfAgentsInputField) {
+        int n;
+        bool valid = int.TryParse(noOfAgentsInputField.text, out n);
+        if (valid) {
+            if (n > gridUI.width * gridUI.height * gridUI.depth) {
+                Debug.Log("Can't add more agents than spaces in grid.");
+                return;
+            }
+            AddAgents(n);
+            agentUI.addAgentsButton.interactable = false;
+            noOfAgentsInputField.interactable = false;
+        }
+    }
+
+    void AddAgents(int amount) {
+        int counter = 0;
+        while (counter < amount) {
+            int x = Random.Range(0, gridUI.width);
+            int y = Random.Range(0, gridUI.height);
+            int z = Random.Range(0, gridUI.depth);
+            if (!agentLocations[x][y][z]) {
+                AgentBehaviour agent = Instantiate(agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent).GetComponent<AgentBehaviour>();
+                agent.pos = new Vector3Int(x, y, z);
+                agents.Add(agent);
+                agentLocations[x][y][z] = true;
+                counter++;
+            }
         }
     }
 
@@ -75,6 +114,7 @@ public class SceneManagement : MonoBehaviour
         pheromoneUI.gameObject.SetActive(true);
         debugUI.gameObject.SetActive(true);
         visualUI.gameObject.SetActive(true);
+        agentUI.gameObject.SetActive(true);
     }
     
     public void ButtonSaveCurrentGridToFile() {
