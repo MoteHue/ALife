@@ -11,6 +11,7 @@ public class SceneManagement : MonoBehaviour
     public string fileName = "test";
     public GameObject cellPrefab;
     public GameObject pheromonePrefab;
+    public GameObject basePrefab;
     GridUI gridUI;
     CellUI cellUI;
     PheromoneUI pheromoneUI;
@@ -46,6 +47,9 @@ public class SceneManagement : MonoBehaviour
     }
     
     void GenerateVisualGrid() {
+        GameObject floor = Instantiate(basePrefab, transform.position, transform.rotation);
+        floor.GetComponent<Base>().SetScale(gridUI.width, gridUI.height, gridUI.depth);
+
         visualCells = gridUI.GenerateVisualGrid(cellPrefab, cellsVisualParent);
         visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
         cellsVisualised = true;
@@ -58,7 +62,7 @@ public class SceneManagement : MonoBehaviour
         visualUI.gameObject.SetActive(true);
     }
     
-    public void SaveCurrentGridToFile() {
+    public void ButtonSaveCurrentGridToFile() {
         WriteCurrentGridToFile($"results/{fileName}.json");
     }
     
