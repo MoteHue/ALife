@@ -201,7 +201,7 @@ public class SceneManagement : MonoBehaviour
     public void ChangePheromone(int x, int y, int z, int value, bool visible) {
         sim.pheromones[x][y][z] = value;
         if (pheromonesVisualised) {
-            PheromoneData phero = visualPheromones[x][y][z].GetComponent<PheromoneData>();
+            PheromoneBehaviour phero = visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>();
             phero.ActivateMesh(visible);
         }
     }
@@ -258,7 +258,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        if (sim.pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(true);
+                        if (sim.pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>().ActivateMesh(true);
                     }
                 }
             }
@@ -266,7 +266,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        visualPheromones[x][y][z].GetComponent<PheromoneData>().ActivateMesh(false);
+                        visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>().ActivateMesh(false);
                     }
                 }
             }

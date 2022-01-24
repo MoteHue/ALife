@@ -42,7 +42,7 @@ public class Simulation : MonoBehaviour
             callBackCounter = 0;
             StepThroughTime();
             yield return new WaitWhile(() => callBackCounter < agents.Count);
-            yield return new WaitForSecondsRealtime(0.1f);
+            //yield return new WaitForSecondsRealtime(0.1f);
         }
         
     }

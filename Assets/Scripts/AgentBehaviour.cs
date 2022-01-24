@@ -36,9 +36,48 @@ public class AgentBehaviour : MonoBehaviour
         while (pos.y + y < 0 || pos.y + y > gridUI.height - 1) y = Random.Range(-1, 2);
         while (pos.z + z < 0 || pos.z + z > gridUI.depth - 1) z = Random.Range(-1, 2);
 
-        if (!sim.agentLocations[pos.x + x][pos.y + y][pos.z + z] && sim.cells[pos.x + x][pos.y + y][pos.z + z] == 0) {
-            MoveTo(pos.x + x, pos.y + y, pos.z + z);
-            return true;
+        int axisCount = 0;
+        if (x != 0) axisCount++;
+        if (y != 0) axisCount++;
+        if (z != 0) axisCount++;
+
+        if (/*!sim.agentLocations[pos.x + x][pos.y + y][pos.z + z] &&*/ sim.cells[pos.x + x][pos.y + y][pos.z + z] == 0) {
+            if (axisCount == 3) { // Check for movement through wall diagonals
+                if (sim.cells[pos.x + x][pos.y][pos.z] == 0 && sim.cells[pos.x][pos.y + y][pos.z] == 0 && sim.cells[pos.x][pos.y][pos.z + z] == 0) {
+                    MoveTo(pos.x + x, pos.y + y, pos.z + z);
+                    return true;
+                } else {
+                    return false;
+                }
+            } else if (axisCount == 2) {
+                if (x != 0 && y != 0) {
+                    if (sim.cells[pos.x + x][pos.y][pos.z] == 0 && sim.cells[pos.x][pos.y + y][pos.z] == 0) {
+                        MoveTo(pos.x + x, pos.y + y, pos.z + z);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else if (x != 0 && z != 0) {
+                    if (sim.cells[pos.x + x][pos.y][pos.z] == 0 && sim.cells[pos.x][pos.y][pos.z + z] == 0) {
+                        MoveTo(pos.x + x, pos.y + y, pos.z + z);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else if (y != 0 && z != 0) {
+                    if (sim.cells[pos.x][pos.y + y][pos.z] == 0 && sim.cells[pos.x][pos.y][pos.z + z] == 0) {
+                        MoveTo(pos.x + x, pos.y + y, pos.z + z);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else { 
+                MoveTo(pos.x + x, pos.y + y, pos.z + z);
+                return true;
+            }
         } else {
             return false;
         }
@@ -49,7 +88,11 @@ public class AgentBehaviour : MonoBehaviour
     }
 
     // 1. Either the location immediately underneath or immediately above the site must contain material.
+    // The floor, represented by y == -1, counts as material.
     bool Rule1(int x, int y, int z) {
+        if (y == 0) {
+            return true;
+        }
         if (y > 0) {
             if (sim.cells[x][y - 1][z] != 0) {
                 return true;
@@ -62,6 +105,7 @@ public class AgentBehaviour : MonoBehaviour
         }
         return false;
     }
+
 
     // 2. The site must share a face with a horizontally adjacent location that contains material and satisfies (1).
     bool Rule2(int x, int y, int z) {
