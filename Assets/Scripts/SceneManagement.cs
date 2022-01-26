@@ -2,8 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Text.Json;
 using System.IO;
+using Newtonsoft.Json;
 
 public class SceneManagement : MonoBehaviour
 {
@@ -16,7 +16,6 @@ public class SceneManagement : MonoBehaviour
     public GameObject agentPrefab;
     GridUI gridUI;
     CellUI cellUI;
-    PheromoneUI pheromoneUI;
     DebugUI debugUI;
     VisualUI visualUI;
     AgentUI agentUI;
@@ -41,7 +40,6 @@ public class SceneManagement : MonoBehaviour
 
         gridUI = FindObjectOfType<GridUI>();
         cellUI = FindObjectOfType<CellUI>();
-        pheromoneUI = FindObjectOfType<PheromoneUI>();
         debugUI = FindObjectOfType<DebugUI>();
         visualUI = FindObjectOfType<VisualUI>();
         agentUI = FindObjectOfType<AgentUI>();
@@ -52,7 +50,6 @@ public class SceneManagement : MonoBehaviour
     
     void ToggleExtraUI(bool b) {
         cellUI.gameObject.SetActive(b);
-        pheromoneUI.gameObject.SetActive(b);
         debugUI.gameObject.SetActive(b);
         visualUI.gameObject.SetActive(b);
         agentUI.gameObject.SetActive(b);
@@ -90,15 +87,36 @@ public class SceneManagement : MonoBehaviour
     void AddAgents(int amount) {
         int counter = 0;
         while (counter < amount) {
-            int x = Random.Range(0, gridUI.width);
-            int y = Random.Range(0, gridUI.height);
-            int z = Random.Range(0, gridUI.depth);
+            // Limit spawning to the outer two rings of the grid.
+            List<(int, int)> spawnLocations = new List<(int, int)>();
+            for (int i = 0; i < gridUI.width; i++) {
+                spawnLocations.Add((i, 0));
+                spawnLocations.Add((i, 1));
+                spawnLocations.Add((i, gridUI.depth - 2));
+                spawnLocations.Add((i, gridUI.depth - 1));
+            }
+
+            if (gridUI.depth > 4) {
+                for (int j = 2; j < gridUI.depth - 2; j++) {
+                    spawnLocations.Add((0, j));
+                    spawnLocations.Add((1, j));
+                    spawnLocations.Add((gridUI.width - 2, j));
+                    spawnLocations.Add((gridUI.width - 1, j));
+                }
+            }
+
+            (int, int) newXZ = spawnLocations[Random.Range(0, spawnLocations.Count)];
+
+            int x = newXZ.Item1;
+            int y = 0;
+            int z = newXZ.Item2;
+
             if (!sim.agentLocations[x][y][z]) {
-                GameObject agent = Instantiate(agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
-                AgentBehaviour agentBehaviour = agent.GetComponent<AgentBehaviour>();
-                agentBehaviour.pos = new Vector3Int(x, y, z);
-                visualAgents.Add(agent);
-                sim.agents.Add(agentBehaviour);
+                GameObject agentPrefab = Instantiate(this.agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
+                BuilderAgent agent = agentPrefab.GetComponent<BuilderAgent>();
+                agent.pos = new Vector3Int(x, y, z);
+                visualAgents.Add(agentPrefab);
+                sim.agents.Add(agent);
                 sim.agentLocations[x][y][z] = true;
                 counter++;
             }
@@ -125,18 +143,17 @@ public class SceneManagement : MonoBehaviour
     }
     
     void WriteCurrentGridToFile(string filePath) {
-        List<List<List<List<int>>>> data = new List<List<List<List<int>>>> { sim.cells, sim.pheromones };
-        string json = JsonSerializer.Serialize(data);
+        (List<List<List<int>>> , List<List<List<float>>>) data = (sim.cells, sim.pheromoneValues);
+        string json = JsonConvert.SerializeObject(data);
         File.WriteAllText(filePath, json);
     }
 
     void ReadGridFromFile(string filePath) {
         // Read from file
         string json = File.ReadAllText(filePath);
-        List<List<List<List<int>>>> data = JsonSerializer.Deserialize<List<List<List<List<int>>>>>(json);
-        sim.cells = data[0];
-        sim.pheromones = data[1];
-
+        (List<List<List<int>>>, List<List<List<float>>>) data = JsonConvert.DeserializeObject<(List<List<List<int>>>, List<List<List<float>>>)>(json);
+        sim.cells = data.Item1;
+        sim.pheromoneValues = data.Item2;
 
         gridUI.width = sim.cells.Count;
         gridUI.height = sim.cells[0].Count;
@@ -150,11 +167,12 @@ public class SceneManagement : MonoBehaviour
         } else {
             if (!gridUI.coordsValid()) return;
             gridUI.SetWHD();
-            sim.cells = gridUI.GenerateEmptyGrid();
-            sim.pheromones = gridUI.GenerateEmptyGrid();
+            sim.cells = gridUI.GenerateEmptyGridOfInts();
+            sim.pheromoneValues = gridUI.GenerateEmptyGridOfFloats();
         }
+        GenerateVisualGrid();
+        sim.UpdateLocalPheroValuesFromSimList();
         if (visualToggle.isOn) {
-            GenerateVisualGrid();
             visualiseCells();
             visualisePheros();
         }
@@ -198,31 +216,17 @@ public class SceneManagement : MonoBehaviour
         }
     }
 
-    public void ChangePheromone(int x, int y, int z, int value, bool visible) {
-        sim.pheromones[x][y][z] = value;
-        if (pheromonesVisualised) {
-            PheromoneBehaviour phero = visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>();
-            phero.ActivateMesh(visible);
-        }
-    }
-
-    public void ButtonChangePheromone(bool b) {
-        if (!pheromoneUI.coordsValid()) return;
-        int x = int.Parse(pheromoneUI.coords[0].text);
-        int y = int.Parse(pheromoneUI.coords[1].text);
-        int z = int.Parse(pheromoneUI.coords[2].text);
-        if (x>=0 && x< gridUI.width && y>=0 && y< gridUI.height && z>=0 && z< gridUI.depth) {
-            if (b) ChangePheromone(x, y, z, 1, b);
-            else ChangePheromone(x, y, z, 0, b);
-        }
+    public void ChangePheromone(int x, int y, int z, float value) {
+        sim.pheromoneValues[x][y][z] = value;
+        //TODO: 
     }
 
     public void DebugLogCells() {
-        debugUI.DebugLogBigOlList("Cells", sim.cells);
+        debugUI.DebugLogBigOlListOfInts("Cells", sim.cells);
     }
 
     public void DebugLogPheromones() {
-        debugUI.DebugLogBigOlList("Pheromones", sim.pheromones);
+        debugUI.DebugLogBigOlListOfFloats("Pheromones", sim.pheromoneValues);
     }
 
     void visualiseCells() {
@@ -258,7 +262,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        if (sim.pheromones[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>().ActivateMesh(true);
+                        if (sim.pheromoneValues[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<Pheromone>().ActivateMesh(true);
                     }
                 }
             }
@@ -266,7 +270,7 @@ public class SceneManagement : MonoBehaviour
             for (int x = 0; x < gridUI.width; x++) {
                 for (int y = 0; y < gridUI.height; y++) {
                     for (int z = 0; z < gridUI.depth; z++) {
-                        visualPheromones[x][y][z].GetComponent<PheromoneBehaviour>().ActivateMesh(false);
+                        visualPheromones[x][y][z].GetComponent<Pheromone>().ActivateMesh(false);
                     }
                 }
             }

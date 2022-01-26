@@ -109,3 +109,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   meshRenderer: {fileID: 8627127804314426532}
+  gridUI: {fileID: 0}
+  sim: {fileID: 0}
+  value: 0
+  pos: {x: 0, y: 0, z: 0}
+  materialPrefab: {fileID: 2100000, guid: 9abacb8a05f96c24f9a3bfb4697d8b12, type: 2}
