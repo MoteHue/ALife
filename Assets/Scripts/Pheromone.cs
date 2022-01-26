@@ -27,11 +27,11 @@ public class Pheromone : MonoBehaviour
         float sum = 0f;
 
         if (pos.x > 0) sum += -alpha * (value - sim.pheromoneValues[pos.x - 1][pos.y][pos.z]);
-        if (pos.x < gridUI.width - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x + 1][pos.y][pos.z]);
+        if (pos.x < sim.gridDims.x - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x + 1][pos.y][pos.z]);
         if (pos.y > 0) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y - 1][pos.z]);
-        if (pos.y < gridUI.height - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y + 1][pos.z]);
+        if (pos.y < sim.gridDims.y - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y + 1][pos.z]);
         if (pos.z > 0) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y][pos.z - 1]);
-        if (pos.z < gridUI.depth - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y][pos.z + 1]);
+        if (pos.z < sim.gridDims.z - 1) sum += -alpha * (value - sim.pheromoneValues[pos.x][pos.y][pos.z + 1]);
         return sum;
     }
 

@@ -4583,7 +4583,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 'Start SImulation
+  m_Text: 'Start Simulation
 
 '
 --- !u!222 &1128771817
@@ -4656,12 +4656,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d93cb8c892c83d47976f49e165ed601, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fileName: test
+  fileName: test2
   sim: {fileID: 1341202099}
   cellPrefab: {fileID: 8627127804314426534, guid: 1bae49e93d2713844a393f07d4bd1c75, type: 3}
   pheromonePrefab: {fileID: 8627127804314426534, guid: d9abb0abfef2b46409c7dfcf698b412d, type: 3}
   floorPrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
   agentPrefab: {fileID: 8744083513619956372, guid: 44957bd495278c249924c33cf2f7c49d, type: 3}
+  queenPrefab: {fileID: 8744083513619956372, guid: a924a32a066b812489a689ee68edcf41, type: 3}
   cellsVisualParent: {fileID: 142968317}
   pherosVisualParent: {fileID: 1941711665}
   agentsVisualParent: {fileID: 1913152792}
@@ -5078,9 +5079,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sceneManagement: {fileID: 1184344179}
   simulationUI: {fileID: 2008836446}
-  callBackCounter: 0
+  agentCallBackCounter: 0
+  pheroCallBackCounter: 0
   runSimulation: 0
   agents: []
+  pheromones: []
 --- !u!4 &1341202100
 Transform:
   m_ObjectHideFlags: 0
@@ -7657,7 +7660,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2016243635
 RectTransform:
   m_ObjectHideFlags: 0

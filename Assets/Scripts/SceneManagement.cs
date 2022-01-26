@@ -14,6 +14,7 @@ public class SceneManagement : MonoBehaviour
     public GameObject pheromonePrefab;
     public GameObject floorPrefab;
     public GameObject agentPrefab;
+    public GameObject queenPrefab;
     GridUI gridUI;
     CellUI cellUI;
     DebugUI debugUI;
@@ -57,11 +58,11 @@ public class SceneManagement : MonoBehaviour
     }
 
     void GenerateEmptyAgentLocations() {
-        for (int x = 0; x < gridUI.width; x++) {
+        for (int x = 0; x < sim.gridDims.x; x++) {
             List<List<bool>> yList = new List<List<bool>>();
-            for (int y = 0; y < gridUI.height; y++) {
+            for (int y = 0; y < sim.gridDims.y; y++) {
                 List<bool> zList = new List<bool>();
-                for (int z = 0; z < gridUI.depth; z++) {
+                for (int z = 0; z < sim.gridDims.z; z++) {
                     zList.Add(false);
                 }
                 yList.Add(zList);
@@ -70,11 +71,65 @@ public class SceneManagement : MonoBehaviour
         }
     }
 
+    public List<List<List<int>>> GenerateEmptyGridOfInts() {
+        List<List<List<int>>> returnList = new List<List<List<int>>>();
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<int>> yList = new List<List<int>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<int> zList = new List<int>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    zList.Add(0);
+                }
+                yList.Add(zList);
+            }
+            returnList.Add(yList);
+        }
+        return returnList;
+    }
+
+    public List<List<List<float>>> GenerateEmptyGridOfFloats() {
+        List<List<List<float>>> returnList = new List<List<List<float>>>();
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<float>> yList = new List<List<float>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<float> zList = new List<float>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    zList.Add(0);
+                }
+                yList.Add(zList);
+            }
+            returnList.Add(yList);
+        }
+        return returnList;
+    }
+
+    public List<List<List<GameObject>>> GenerateVisualGrid(GameObject prefab, Transform parent) {
+        List<List<List<GameObject>>> returnList = new List<List<List<GameObject>>>();
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<GameObject>> ys = new List<List<GameObject>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<GameObject> zs = new List<GameObject>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    GameObject obj = Instantiate(prefab, new Vector3(x, y, z), transform.rotation, parent);
+                    Pheromone pheromone = obj.GetComponent<Pheromone>();
+                    if (pheromone != null) {
+                        pheromone.pos = new Vector3Int(x, y, z);
+                        sim.pheromones.Add(pheromone);
+                    }
+                    zs.Add(obj);
+                }
+                ys.Add(zs);
+            }
+            returnList.Add(ys);
+        }
+        return returnList;
+    }
+
     public void ButtonAddAgents(InputField noOfAgentsInputField) {
         int n;
         bool valid = int.TryParse(noOfAgentsInputField.text, out n);
         if (valid) {
-            if (n > gridUI.width * gridUI.height * gridUI.depth) {
+            if (n > sim.gridDims.x * sim.gridDims.y * sim.gridDims.z) {
                 Debug.Log("Can't add more agents than spaces in grid.");
                 return;
             }
@@ -84,24 +139,33 @@ public class SceneManagement : MonoBehaviour
         }
     }
 
+    public void AddQueen(int x, int y, int z) {
+        GameObject queenObject = Instantiate(this.queenPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
+        QueenAgent queenAgent = queenObject.GetComponent<QueenAgent>();
+        queenAgent.pos = new Vector3Int(x, y, z);
+        visualAgents.Add(queenObject);
+        sim.agents.Add(queenAgent);
+        sim.agentLocations[x][y][z] = true;
+    }
+
     void AddAgents(int amount) {
         int counter = 0;
         while (counter < amount) {
             // Limit spawning to the outer two rings of the grid.
             List<(int, int)> spawnLocations = new List<(int, int)>();
-            for (int i = 0; i < gridUI.width; i++) {
+            for (int i = 0; i < sim.gridDims.x; i++) {
                 spawnLocations.Add((i, 0));
                 spawnLocations.Add((i, 1));
-                spawnLocations.Add((i, gridUI.depth - 2));
-                spawnLocations.Add((i, gridUI.depth - 1));
+                spawnLocations.Add((i, sim.gridDims.z - 2));
+                spawnLocations.Add((i, sim.gridDims.z - 1));
             }
 
-            if (gridUI.depth > 4) {
-                for (int j = 2; j < gridUI.depth - 2; j++) {
+            if (sim.gridDims.z > 4) {
+                for (int j = 2; j < sim.gridDims.z - 2; j++) {
                     spawnLocations.Add((0, j));
                     spawnLocations.Add((1, j));
-                    spawnLocations.Add((gridUI.width - 2, j));
-                    spawnLocations.Add((gridUI.width - 1, j));
+                    spawnLocations.Add((sim.gridDims.x - 2, j));
+                    spawnLocations.Add((sim.gridDims.x - 1, j));
                 }
             }
 
@@ -112,10 +176,10 @@ public class SceneManagement : MonoBehaviour
             int z = newXZ.Item2;
 
             if (!sim.agentLocations[x][y][z]) {
-                GameObject agentPrefab = Instantiate(this.agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
-                BuilderAgent agent = agentPrefab.GetComponent<BuilderAgent>();
+                GameObject agentObject = Instantiate(this.agentPrefab, transform.position + new Vector3(x - 0.5f, y - 0.5f, z - 0.5f), transform.rotation, agentsVisualParent);
+                BuilderAgent agent = agentObject.GetComponent<BuilderAgent>();
                 agent.pos = new Vector3Int(x, y, z);
-                visualAgents.Add(agentPrefab);
+                visualAgents.Add(agentObject);
                 sim.agents.Add(agent);
                 sim.agentLocations[x][y][z] = true;
                 counter++;
@@ -126,10 +190,10 @@ public class SceneManagement : MonoBehaviour
 
     void GenerateVisualGrid() {
         GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
-        floor.GetComponent<Floor>().SetScale(gridUI.width, gridUI.height, gridUI.depth);
+        floor.GetComponent<Floor>().SetScale(sim.gridDims.x, sim.gridDims.y, sim.gridDims.z);
 
-        visualCells = gridUI.GenerateVisualGrid(cellPrefab, cellsVisualParent);
-        visualPheromones = gridUI.GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
+        visualCells = GenerateVisualGrid(cellPrefab, cellsVisualParent);
+        visualPheromones = GenerateVisualGrid(pheromonePrefab, pherosVisualParent);
         cellsVisualised = true;
         pheromonesVisualised = true;
         agentsVisualised = true;
@@ -155,9 +219,18 @@ public class SceneManagement : MonoBehaviour
         sim.cells = data.Item1;
         sim.pheromoneValues = data.Item2;
 
-        gridUI.width = sim.cells.Count;
-        gridUI.height = sim.cells[0].Count;
-        gridUI.depth = sim.cells[0][0].Count;
+        sim.gridDims.x = sim.cells.Count;
+        sim.gridDims.y = sim.cells[0].Count;
+        sim.gridDims.z = sim.cells[0][0].Count;
+    }
+
+    public bool coordsValid() {
+        bool allValid = true;
+        int n;
+        foreach (InputField coord in gridUI.coords) {
+            if (allValid) allValid = int.TryParse(coord.text, out n);
+        }
+        return allValid;
     }
 
     void GenerateGrid(Toggle visualToggle, bool useFile) {
@@ -165,10 +238,10 @@ public class SceneManagement : MonoBehaviour
         if (useFile) {
             ReadGridFromFile($"results/{fileName}.json");
         } else {
-            if (!gridUI.coordsValid()) return;
-            gridUI.SetWHD();
-            sim.cells = gridUI.GenerateEmptyGridOfInts();
-            sim.pheromoneValues = gridUI.GenerateEmptyGridOfFloats();
+            if (!coordsValid()) return;
+            sim.SetWHD();
+            sim.cells = GenerateEmptyGridOfInts();
+            sim.pheromoneValues = GenerateEmptyGridOfFloats();
         }
         GenerateVisualGrid();
         sim.UpdateLocalPheroValuesFromSimList();
@@ -210,7 +283,7 @@ public class SceneManagement : MonoBehaviour
         int x = int.Parse(cellUI.coords[0].text);
         int y = int.Parse(cellUI.coords[1].text);
         int z = int.Parse(cellUI.coords[2].text);
-        if (x>=0 && x< gridUI.width && y>=0 && y< gridUI.height && z>=0 && z< gridUI.depth) {
+        if (x>=0 && x< sim.gridDims.x && y>=0 && y< sim.gridDims.y && z>=0 && z< sim.gridDims.z) {
             if (b) ChangeCell(x, y, z, 1, b);
             else ChangeCell(x, y, z, 0, b);
         }
@@ -231,17 +304,17 @@ public class SceneManagement : MonoBehaviour
 
     void visualiseCells() {
         if (cellsVisualised) {
-            for (int x = 0; x < gridUI.width; x++) {
-                for (int y = 0; y < gridUI.height; y++) {
-                    for (int z = 0; z < gridUI.depth; z++) {
+            for (int x = 0; x < sim.gridDims.x; x++) {
+                for (int y = 0; y < sim.gridDims.y; y++) {
+                    for (int z = 0; z < sim.gridDims.z; z++) {
                         if (sim.cells[x][y][z] != 0) visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(true);
                     }
                 }
             }
         } else {
-            for (int x = 0; x < gridUI.width; x++) {
-                for (int y = 0; y < gridUI.height; y++) {
-                    for (int z = 0; z < gridUI.depth; z++) {
+            for (int x = 0; x < sim.gridDims.x; x++) {
+                for (int y = 0; y < sim.gridDims.y; y++) {
+                    for (int z = 0; z < sim.gridDims.z; z++) {
                         visualCells[x][y][z].GetComponent<CellData>().ActivateMesh(false);
                     }
                 }
@@ -259,17 +332,17 @@ public class SceneManagement : MonoBehaviour
 
     void visualisePheros() {
         if (pheromonesVisualised) {
-            for (int x = 0; x < gridUI.width; x++) {
-                for (int y = 0; y < gridUI.height; y++) {
-                    for (int z = 0; z < gridUI.depth; z++) {
+            for (int x = 0; x < sim.gridDims.x; x++) {
+                for (int y = 0; y < sim.gridDims.y; y++) {
+                    for (int z = 0; z < sim.gridDims.z; z++) {
                         if (sim.pheromoneValues[x][y][z] != 0) visualPheromones[x][y][z].GetComponent<Pheromone>().ActivateMesh(true);
                     }
                 }
             }
         } else {
-            for (int x = 0; x < gridUI.width; x++) {
-                for (int y = 0; y < gridUI.height; y++) {
-                    for (int z = 0; z < gridUI.depth; z++) {
+            for (int x = 0; x < sim.gridDims.x; x++) {
+                for (int y = 0; y < sim.gridDims.y; y++) {
+                    for (int z = 0; z < sim.gridDims.z; z++) {
                         visualPheromones[x][y][z].GetComponent<Pheromone>().ActivateMesh(false);
                     }
                 }
