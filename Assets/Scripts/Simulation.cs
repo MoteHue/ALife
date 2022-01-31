@@ -400,7 +400,7 @@ public class Simulation : MonoBehaviour
             if (cellValues[pos.x - 1][pos.y][pos.z] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x - 1][pos.y][pos.z]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x - 1][pos.y][pos.z];
             }
         } else {
             sum += -alpha * value;
@@ -409,7 +409,7 @@ public class Simulation : MonoBehaviour
             if (cellValues[pos.x + 1][pos.y][pos.z] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x + 1][pos.y][pos.z]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x + 1][pos.y][pos.z];
             }
         } else {
             sum += -alpha * value;
@@ -418,16 +418,14 @@ public class Simulation : MonoBehaviour
             if (cellValues[pos.x][pos.y - 1][pos.z] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y - 1][pos.z]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x][pos.y - 1][pos.z];
             }
-        } else {
-            sum += alpha * value; // Note this differs from the others as the floor is considered to be made of blocks.
-        }
+        } // Note there is no else as the floor is considered to be made of blocks.
         if (pos.y < gridDims.y - 1) {
             if (cellValues[pos.x][pos.y + 1][pos.z] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y + 1][pos.z]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x][pos.y + 1][pos.z];
             }
         } else {
             sum += -alpha * value;
@@ -436,7 +434,7 @@ public class Simulation : MonoBehaviour
             if (cellValues[pos.x][pos.y][pos.z - 1] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z - 1]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x][pos.y][pos.z - 1];
             }
         } else {
             sum += -alpha * value;
@@ -445,18 +443,11 @@ public class Simulation : MonoBehaviour
             if (cellValues[pos.x][pos.y][pos.z + 1] == 0) {
                 sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z + 1]);
             } else {
-                pheromoneValues[pos.x][pos.y][pos.z] += alpha * value;
+                sum += alpha * pastPheromoneValues[pos.x][pos.y][pos.z + 1];
             }
         } else {
             sum += -alpha * value;
         }
-
-        //if (pos.x > 0) sum += -alpha * (value - pastPheromoneValues[pos.x - 1][pos.y][pos.z]);
-        //if (pos.x < gridDims.x - 1) sum += -alpha * (value - pastPheromoneValues[pos.x + 1][pos.y][pos.z]);
-        //if (pos.y > 0) sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y - 1][pos.z]);
-        //if (pos.y < gridDims.y - 1) sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y + 1][pos.z]);
-        //if (pos.z > 0) sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z - 1]);
-        //if (pos.z < gridDims.z - 1) sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z + 1]);
 
         return sum;
     }
@@ -485,8 +476,11 @@ public class Simulation : MonoBehaviour
         for (int x = 0; x < gridDims.x; x++) {
             for (int y = 0; y < gridDims.y; y++) {
                 for (int z = 0; z < gridDims.z; z++) {
-                    pheromoneValues[x][y][z] += CalcDiffusionFromNeighbours(new Vector3Int(x, y, z));
-                    if (pheromoneValues[x][y][z] < 0.01f) pheromoneValues[x][y][z] = 0f;
+                    if (cellValues[x][y][z] == 0) {
+                        pheromoneValues[x][y][z] += CalcDiffusionFromNeighbours(new Vector3Int(x, y, z));
+                        if (pheromoneValues[x][y][z] < 0.01f) pheromoneValues[x][y][z] = 0f;
+                    }
+                    
                 }
             }
         }
