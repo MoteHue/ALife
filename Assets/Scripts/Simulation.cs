@@ -17,10 +17,12 @@ public class Simulation : MonoBehaviour
     public List<List<List<int>>> agentValues;
     public List<List<List<float>>> pastPheromoneValues;
 
+    List<Vector3Int> queenCellPositions;
+
     int timestep = 0;
     float placementProbability = 0.1f;
     float alpha = 1f / 7f;
-    float decay = 0.8f;
+    float decay = 0.9f;
 
     public bool sceneVisualised;
 
@@ -36,9 +38,24 @@ public class Simulation : MonoBehaviour
         pastPheromoneValues = new List<List<List<float>>>();
         agentValues = new List<List<List<int>>>();
         gridUI = FindObjectOfType<GridUI>();
+        queenCellPositions = new List<Vector3Int>();
+        queenCellPositions.Add(new Vector3Int(25, 0, 25));
+        queenCellPositions.Add(new Vector3Int(24, 0, 25));
+        queenCellPositions.Add(new Vector3Int(26, 0, 25));
+        queenCellPositions.Add(new Vector3Int(25, 0, 24));
+        queenCellPositions.Add(new Vector3Int(25, 0, 26));
+        queenCellPositions.Add(new Vector3Int(25, 1, 25));
+        queenCellPositions.Add(new Vector3Int(24, 0, 24));
+        queenCellPositions.Add(new Vector3Int(24, 0, 26));
+        queenCellPositions.Add(new Vector3Int(26, 0, 26));
+        queenCellPositions.Add(new Vector3Int(26, 0, 24));
     }
 
     public void StartSimulation() {
+        foreach (Vector3Int queenCell in queenCellPositions) {
+            sceneManagement.ChangeCell(queenCell.x, queenCell.y, queenCell.z, 2, sceneVisualised);
+        }
+
         runSimulation = true;
         simulationUI.nextTimestepButton.interactable = false;
         StartCoroutine(nameof(Simulate));
@@ -337,8 +354,12 @@ public class Simulation : MonoBehaviour
     bool TryPlaceBlock(Vector3Int currentPos) {
         if (Random.Range(0f, 1f) <= placementProbability) {
             if (Rule1(currentPos.x, currentPos.y, currentPos.z) || Rule2(currentPos.x, currentPos.y, currentPos.z) || Rule3(currentPos.x, currentPos.y, currentPos.z)) {
-                PlaceBlockAt(currentPos.x, currentPos.y, currentPos.z);
-                return true;
+                if (pheromoneValues[currentPos.x][currentPos.y][currentPos.z] >= 0.1f && pheromoneValues[currentPos.x][currentPos.y][currentPos.z] <= 0.5f) {
+                    PlaceBlockAt(currentPos.x, currentPos.y, currentPos.z);
+                    return true;
+                } else {
+                    return false;
+                }
             } else {
                 return false;
             }
@@ -490,16 +511,23 @@ public class Simulation : MonoBehaviour
         }
     }
 
+    void DoQueenCells() {
+        foreach(Vector3Int pos in queenCellPositions) {
+            pheromoneValues[pos.x][pos.y][pos.z] = 6400f;
+        }
+    }
+
     IEnumerator Simulate() {
         while (true) {
             yield return new WaitWhile(() => !runSimulation);
 
             AgentsStepThroughTime();
             PheromonesStepThroughTime();
+            DoQueenCells();
 
             timestep++;
 
-            yield return new WaitForSecondsRealtime(0.5f);
+            //yield return new WaitForSecondsRealtime(0.5f);
         }
     }
 

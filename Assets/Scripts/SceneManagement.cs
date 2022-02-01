@@ -130,9 +130,46 @@ public class SceneManagement : MonoBehaviour
         GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
         floor.GetComponent<Floor>().SetScale(sim.gridDims.x, sim.gridDims.y, sim.gridDims.z);
 
-        visualCells = GenerateVisualGridOfCells(cellPrefab, cellsVisualParent);
-        visualPheromones = GenerateVisualGridOfPheromones(pheromonePrefab, pherosVisualParent);
-        visualAgents = GenerateVisualGridOfAgents(agentPrefab, agentsVisualParent);
+        //visualCells = GenerateVisualGridOfCells(cellPrefab, cellsVisualParent);
+        //visualPheromones = GenerateVisualGridOfPheromones(pheromonePrefab, pherosVisualParent);
+        //visualAgents = GenerateVisualGridOfAgents(agentPrefab, agentsVisualParent);
+
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<VisualCell>> ys = new List<List<VisualCell>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<VisualCell> zs = new List<VisualCell>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    zs.Add(null);
+                }
+                ys.Add(zs);
+            }
+            visualCells.Add(ys);
+        }
+
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<VisualPheromone>> ys = new List<List<VisualPheromone>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<VisualPheromone> zs = new List<VisualPheromone>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    zs.Add(null);
+                }
+                ys.Add(zs);
+            }
+            visualPheromones.Add(ys);
+        }
+
+        for (int x = 0; x < sim.gridDims.x; x++) {
+            List<List<VisualAgent>> ys = new List<List<VisualAgent>>();
+            for (int y = 0; y < sim.gridDims.y; y++) {
+                List<VisualAgent> zs = new List<VisualAgent>();
+                for (int z = 0; z < sim.gridDims.z; z++) {
+                    zs.Add(null);
+                }
+                ys.Add(zs);
+            }
+            visualAgents.Add(ys);
+        }
+
         cellsVisualised = true;
         pheromonesVisualised = true;
         agentsVisualised = true;
@@ -214,7 +251,7 @@ public class SceneManagement : MonoBehaviour
     public void ChangeCell(int x, int y, int z, int value, bool visible) {
         sim.cellValues[x][y][z] = value;
         if (cellsVisualised) {
-            visualCells[x][y][z].ActivateMesh(visible);
+            VisualiseCells();
         }
     }
 
@@ -251,10 +288,18 @@ public class SceneManagement : MonoBehaviour
             for (int y = 0; y < sim.gridDims.y; y++) {
                 for (int z = 0; z < sim.gridDims.z; z++) {
                     if (cellsVisualised) {
-                        if (sim.cellValues[x][y][z] != 0) visualCells[x][y][z].ActivateMesh(true);
-                        else visualCells[x][y][z].ActivateMesh(false);
+                        if (sim.cellValues[x][y][z] != 0) {
+                            if (visualCells[x][y][z] == null) {
+                                GameObject obj = Instantiate(cellPrefab, cellsVisualParent.position + new Vector3(x, y, z), cellsVisualParent.rotation, cellsVisualParent);
+                                VisualCell cell = obj.GetComponent<VisualCell>();
+                                visualCells[x][y][z] = cell;
+                            }
+                            visualCells[x][y][z].ActivateMesh(true);
+                        } else {
+                            if (visualCells[x][y][z] != null) visualCells[x][y][z].ActivateMesh(false);
+                        }
                     } else {
-                        visualCells[x][y][z].ActivateMesh(false);
+                        if (visualCells[x][y][z] != null) visualCells[x][y][z].ActivateMesh(false);
                     }
                 }
             }
@@ -275,13 +320,18 @@ public class SceneManagement : MonoBehaviour
                 for (int z = 0; z < sim.gridDims.z; z++) {
                     if (pheromonesVisualised) {
                         if (sim.pheromoneValues[x][y][z] > 0.01f) {
-                                visualPheromones[x][y][z].ActivateMesh(true);
-                                visualPheromones[x][y][z].SetAlpha(sim.pheromoneValues[x][y][z]);
+                            if (visualPheromones[x][y][z] == null) {
+                                GameObject obj = Instantiate(pheromonePrefab, pherosVisualParent.position + new Vector3(x, y, z), pherosVisualParent.rotation, pherosVisualParent);
+                                VisualPheromone phero = obj.GetComponent<VisualPheromone>();
+                                visualPheromones[x][y][z] = phero;
+                            }
+                            visualPheromones[x][y][z].ActivateMesh(true);
+                            visualPheromones[x][y][z].SetAlpha(sim.pheromoneValues[x][y][z]);
                         } else {
-                                visualPheromones[x][y][z].ActivateMesh(false);
+                            if (visualPheromones[x][y][z] != null) visualPheromones[x][y][z].ActivateMesh(false);
                         }
                     } else {
-                        visualPheromones[x][y][z].ActivateMesh(false);
+                        if (visualPheromones[x][y][z] != null) visualPheromones[x][y][z].ActivateMesh(false);
                     }
                 }
             }
@@ -302,10 +352,18 @@ public class SceneManagement : MonoBehaviour
                 for (int z = 0; z < sim.gridDims.z; z++) {
                     if (sim.agentValues.Count != 0) {
                         if (agentsVisualised) {
-                            if (sim.agentValues[x][y][z] != 0) visualAgents[x][y][z].ActivateMesh(true);
-                            else visualAgents[x][y][z].ActivateMesh(false);
+                            if (sim.agentValues[x][y][z] != 0) {
+                                if (visualAgents[x][y][z] == null) {
+                                    GameObject obj = Instantiate(agentPrefab, agentsVisualParent.position + new Vector3(x, y, z), agentsVisualParent.rotation, agentsVisualParent);
+                                    VisualAgent agent = obj.GetComponent<VisualAgent>();
+                                    visualAgents[x][y][z] = agent;
+                                }
+                                visualAgents[x][y][z].ActivateMesh(true);
+                            } else {
+                                if (visualAgents[x][y][z] != null) visualAgents[x][y][z].ActivateMesh(false);
+                            }
                         } else {
-                            visualAgents[x][y][z].ActivateMesh(false);
+                            if (visualAgents[x][y][z] != null) visualAgents[x][y][z].ActivateMesh(false);
                         }
                     } 
                 }
