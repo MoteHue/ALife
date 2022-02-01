@@ -15,7 +15,7 @@ public class Simulation : MonoBehaviour
     public List<List<List<int>>> cellValues;
     public List<List<List<float>>> pheromoneValues;
     public List<List<List<int>>> agentValues;
-    public List<List<List<float>>> pastPheromoneValues;
+    public List<List<List<float>>> pheromoneUpdateBuffer;
 
     List<Vector3Int> queenCellPositions;
 
@@ -35,20 +35,38 @@ public class Simulation : MonoBehaviour
     private void Start() {
         cellValues = new List<List<List<int>>>();
         pheromoneValues = new List<List<List<float>>>();
-        pastPheromoneValues = new List<List<List<float>>>();
+        pheromoneUpdateBuffer = new List<List<List<float>>>();
         agentValues = new List<List<List<int>>>();
         gridUI = FindObjectOfType<GridUI>();
         queenCellPositions = new List<Vector3Int>();
-        queenCellPositions.Add(new Vector3Int(25, 0, 25));
-        queenCellPositions.Add(new Vector3Int(24, 0, 25));
-        queenCellPositions.Add(new Vector3Int(26, 0, 25));
-        queenCellPositions.Add(new Vector3Int(25, 0, 24));
-        queenCellPositions.Add(new Vector3Int(25, 0, 26));
-        queenCellPositions.Add(new Vector3Int(25, 1, 25));
-        queenCellPositions.Add(new Vector3Int(24, 0, 24));
-        queenCellPositions.Add(new Vector3Int(24, 0, 26));
         queenCellPositions.Add(new Vector3Int(26, 0, 26));
-        queenCellPositions.Add(new Vector3Int(26, 0, 24));
+        queenCellPositions.Add(new Vector3Int(27, 0, 27));
+        queenCellPositions.Add(new Vector3Int(28, 0, 28));
+        queenCellPositions.Add(new Vector3Int(29, 0, 29));
+        queenCellPositions.Add(new Vector3Int(30, 0, 30));
+        queenCellPositions.Add(new Vector3Int(31, 0, 31));
+        queenCellPositions.Add(new Vector3Int(32, 0, 32));
+        queenCellPositions.Add(new Vector3Int(33, 0, 33));
+        queenCellPositions.Add(new Vector3Int(27, 0, 26));
+        queenCellPositions.Add(new Vector3Int(28, 0, 27));
+        queenCellPositions.Add(new Vector3Int(29, 0, 28));
+        queenCellPositions.Add(new Vector3Int(30, 0, 29));
+        queenCellPositions.Add(new Vector3Int(31, 0, 30));
+        queenCellPositions.Add(new Vector3Int(32, 0, 31));
+        queenCellPositions.Add(new Vector3Int(33, 0, 32));
+        queenCellPositions.Add(new Vector3Int(26, 0, 27));
+        queenCellPositions.Add(new Vector3Int(27, 0, 28));
+        queenCellPositions.Add(new Vector3Int(28, 0, 29));
+        queenCellPositions.Add(new Vector3Int(29, 0, 30));
+        queenCellPositions.Add(new Vector3Int(30, 0, 31));
+        queenCellPositions.Add(new Vector3Int(31, 0, 32));
+        queenCellPositions.Add(new Vector3Int(32, 0, 33));
+        queenCellPositions.Add(new Vector3Int(27, 1, 27));
+        queenCellPositions.Add(new Vector3Int(28, 1, 28));
+        queenCellPositions.Add(new Vector3Int(29, 1, 29));
+        queenCellPositions.Add(new Vector3Int(30, 1, 30));
+        queenCellPositions.Add(new Vector3Int(31, 1, 31));
+        queenCellPositions.Add(new Vector3Int(32, 1, 32));
     }
 
     public void StartSimulation() {
@@ -132,7 +150,7 @@ public class Simulation : MonoBehaviour
     }
 
     // Called when a block is sucessfully placed, when an agent moves outside of the grid, or when an agent is stuck.
-    void CompleteLifeCycle(Vector3Int currentPos) {
+    Vector3Int CompleteLifeCycle(Vector3Int currentPos) {
         List<(int, int)> spawnLocations = new List<(int, int)>();
         for (int i = 0; i < gridDims.x; i++) {
             spawnLocations.Add((i, 0));
@@ -152,7 +170,10 @@ public class Simulation : MonoBehaviour
 
         (int, int) newXZ = spawnLocations[Random.Range(0, spawnLocations.Count)];
 
-        MakeMove(currentPos, new Vector3Int(newXZ.Item1, 0, newXZ.Item2));
+        Vector3Int newPos = new Vector3Int(newXZ.Item1, 0, newXZ.Item2);
+
+        MakeMove(currentPos, newPos);
+        return newPos;
     }
 
     bool CheckNoObstructions(Vector3Int currentPos, Vector3Int move) {
@@ -239,7 +260,7 @@ public class Simulation : MonoBehaviour
         agentValues[currentPos.x][currentPos.y][currentPos.z]--;
     }
 
-    bool TryMakeMove(Vector3Int currentPos) {
+    Vector3Int TryMakeMove(Vector3Int currentPos) {
         List<Vector3Int> possibleMoves = new List<Vector3Int>();
 
         for (int x = -1; x <= 1; x++) {
@@ -265,14 +286,16 @@ public class Simulation : MonoBehaviour
         if (possibleMoves.Count != 0) {
             Vector3Int move = possibleMoves[Random.Range(0, possibleMoves.Count)];
             if (currentPos.x + move.x < 0 || currentPos.x + move.x >= gridDims.x || currentPos.z + move.z < 0 || currentPos.z + move.z >= gridDims.z) { // Moving out of grid
-                CompleteLifeCycle(currentPos);
+                Vector3Int newPos = CompleteLifeCycle(currentPos);
+                return newPos;
             } else { // Moving within grid
                 MakeMove(currentPos, currentPos + move);
+                return currentPos + move;
             }
-            return true;
+            
         } else {
-            CompleteLifeCycle(currentPos);
-            return false;
+            Vector3Int newPos = CompleteLifeCycle(currentPos);
+            return newPos;
         }
     }
 
@@ -382,25 +405,14 @@ public class Simulation : MonoBehaviour
             }
         }
 
+        List<Vector3Int> newPositions = new List<Vector3Int>();
         foreach (Vector3Int pos in positions) {
-            TryMakeMove(pos);
+            Vector3Int newPos = TryMakeMove(pos);
+            newPositions.Add(newPos);
         }
 
         if (sceneVisualised) {
             sceneManagement.VisualiseAgents();
-        }       
-
-        List<Vector3Int> newPositions = new List<Vector3Int>();
-        for (int x = 0; x < gridDims.x; x++) {
-            for (int y = 0; y < gridDims.y; y++) {
-                for (int z = 0; z < gridDims.z; z++) {
-                    if (agentValues[x][y][z] != 0) {
-                        for (int i = 0; i < agentValues[x][y][z]; i++) {
-                            newPositions.Add(new Vector3Int(x, y, z));
-                        }
-                    }
-                }
-            }
         }
 
         foreach (Vector3Int pos in newPositions) {
@@ -415,56 +427,56 @@ public class Simulation : MonoBehaviour
     // Diffuses pheromone from neighbouring cells. If there is a block in the neighbouring cell, the diffusion value is instead sent back. Edges of the grid are considered to be empty of pheromone.
     float CalcDiffusionFromNeighbours(Vector3Int pos) {
         float sum = 0f;
-        float value = pastPheromoneValues[pos.x][pos.y][pos.z];
+        float value = pheromoneUpdateBuffer[pos.x][pos.y][pos.z];
 
         if (pos.x > 0) {
             if (cellValues[pos.x - 1][pos.y][pos.z] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x - 1][pos.y][pos.z]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x - 1][pos.y][pos.z]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x - 1][pos.y][pos.z];
+                sum += alpha * pheromoneUpdateBuffer[pos.x - 1][pos.y][pos.z];
             }
         } else {
             sum += -alpha * value;
         }
         if (pos.x < gridDims.x - 1) {
             if (cellValues[pos.x + 1][pos.y][pos.z] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x + 1][pos.y][pos.z]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x + 1][pos.y][pos.z]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x + 1][pos.y][pos.z];
+                sum += alpha * pheromoneUpdateBuffer[pos.x + 1][pos.y][pos.z];
             }
         } else {
             sum += -alpha * value;
         }
         if (pos.y > 0) {
             if (cellValues[pos.x][pos.y - 1][pos.z] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y - 1][pos.z]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x][pos.y - 1][pos.z]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x][pos.y - 1][pos.z];
+                sum += alpha * pheromoneUpdateBuffer[pos.x][pos.y - 1][pos.z];
             }
         } // Note there is no else as the floor is considered to be made of blocks.
         if (pos.y < gridDims.y - 1) {
             if (cellValues[pos.x][pos.y + 1][pos.z] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y + 1][pos.z]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x][pos.y + 1][pos.z]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x][pos.y + 1][pos.z];
+                sum += alpha * pheromoneUpdateBuffer[pos.x][pos.y + 1][pos.z];
             }
         } else {
             sum += -alpha * value;
         }
         if (pos.z > 0) {
             if (cellValues[pos.x][pos.y][pos.z - 1] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z - 1]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x][pos.y][pos.z - 1]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x][pos.y][pos.z - 1];
+                sum += alpha * pheromoneUpdateBuffer[pos.x][pos.y][pos.z - 1];
             }
         } else {
             sum += -alpha * value;
         }
         if (pos.z < gridDims.z - 1) {
             if (cellValues[pos.x][pos.y][pos.z + 1] == 0) {
-                sum += -alpha * (value - pastPheromoneValues[pos.x][pos.y][pos.z + 1]);
+                sum += -alpha * (value - pheromoneUpdateBuffer[pos.x][pos.y][pos.z + 1]);
             } else {
-                sum += alpha * pastPheromoneValues[pos.x][pos.y][pos.z + 1];
+                sum += alpha * pheromoneUpdateBuffer[pos.x][pos.y][pos.z + 1];
             }
         } else {
             sum += -alpha * value;
@@ -489,7 +501,7 @@ public class Simulation : MonoBehaviour
         for (int x = 0; x < gridDims.x; x++) {
             for (int y = 0; y < gridDims.y; y++) {
                 for (int z = 0; z < gridDims.z; z++) {
-                    pastPheromoneValues[x][y][z] = pheromoneValues[x][y][z];
+                    pheromoneUpdateBuffer[x][y][z] = pheromoneValues[x][y][z];
                 }
             }
         }
@@ -513,7 +525,7 @@ public class Simulation : MonoBehaviour
 
     void DoQueenCells() {
         foreach(Vector3Int pos in queenCellPositions) {
-            pheromoneValues[pos.x][pos.y][pos.z] = 6400f;
+            pheromoneValues[pos.x][pos.y][pos.z] = 400f;
         }
     }
 

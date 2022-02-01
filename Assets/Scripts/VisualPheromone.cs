@@ -20,9 +20,9 @@ public class VisualPheromone : MonoBehaviour
     }
 
     public void SetAlpha(float value) {
-        //if (value >= 0.1f && value <= 0.5f) meshRenderer.material.color = new Color(0f, 1f, 0f, 0.5f);
+        if (value >= 0.1f && value <= 0.5f) meshRenderer.material.color = new Color(0f, 1f, 0f, 0.5f);
         //else meshRenderer.material.color = new Color(materialPrefab.color.r, materialPrefab.color.g, materialPrefab.color.b, Mathf.Min(value, 0.8f));
-        //else ActivateMesh(false);
-        meshRenderer.material.color = new Color(materialPrefab.color.r, materialPrefab.color.g, materialPrefab.color.b, Mathf.Min(value, 0.8f));
+        else ActivateMesh(false);
+        //meshRenderer.material.color = new Color(materialPrefab.color.r, materialPrefab.color.g, materialPrefab.color.b, Mathf.Min(value, 0.8f));
     }
 }

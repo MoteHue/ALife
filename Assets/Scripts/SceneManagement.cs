@@ -216,8 +216,9 @@ public class SceneManagement : MonoBehaviour
             sim.SetWHD();
             sim.cellValues = sim.GenerateEmptyGridOfInts();
             sim.pheromoneValues = sim.GenerateEmptyGridOfFloats();
+            sim.agentValues = sim.GenerateEmptyGridOfInts();
         }
-        sim.pastPheromoneValues = sim.GenerateEmptyGridOfFloats();
+        sim.pheromoneUpdateBuffer = sim.GenerateEmptyGridOfFloats();
 
         ToggleExtraUI(true);
         if (visualToggle.isOn) {
@@ -227,8 +228,6 @@ public class SceneManagement : MonoBehaviour
             VisualisePheros();
             VisualiseAgents();
         }
-
-        sim.agentValues = sim.GenerateEmptyGridOfInts();
 
         // Disable UI elements after use.
         gridUI.generateGrid.interactable = false;
