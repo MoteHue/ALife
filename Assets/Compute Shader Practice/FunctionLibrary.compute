@@ -11,10 +11,21 @@ float2 GetUV(uint3 id) {
 	return (id.xy + 0.5) * _Step - 1.0;
 }
 
+float3 GetUV2(uint3 id) {
+	return (id + 0.5) * _Step - 1.0;
+}
+
+float3 GetPosFromID(float x, float y, float z) {
+	float3 p;
+	p.x = x;
+	p.y = y;
+	p.z = z;
+	return p;
+}
 
 void SetPosition(uint3 id, float3 position) {
-	if (id.x < _Resolution && id.y < _Resolution) {
-		_Positions[id.x + id.y * _Resolution] = position;
+	if (id.x < _Resolution && id.y < _Resolution && id.z < _Resolution) {
+		_Positions[id.x + id.y * _Resolution + id.z * _Resolution * _Resolution] = position;
 	}
 }
 
@@ -26,9 +37,10 @@ float3 Wave(float u, float v, float t) {
 	return p;
 }
 
-[numthreads(8, 8, 1)]
+[numthreads(8, 8, 8)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
-	float2 uv = GetUV(id);
-	SetPosition(id, Wave(uv.x, uv.y, _Time));
+	//float2 uv = GetUV(id);
+	//SetPosition(id, Wave(uv.x, uv.y, _Time));
+	SetPosition(id, GetPosFromID(id.x, id.y, id.z));
 }
 
