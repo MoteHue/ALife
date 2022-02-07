@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GPUGraph : MonoBehaviour {
+public class GPUSimulation : MonoBehaviour {
 
 	[SerializeField]
 	ComputeShader computeShader;
@@ -18,19 +18,24 @@ public class GPUGraph : MonoBehaviour {
 	[SerializeField, Range(10, maxResolution)]
 	int resolution = 20;
 
-	[SerializeField]
-	FunctionLibrary.FunctionName function;
-
 	ComputeBuffer positionsBuffer;
+
+	int counter = 0;
+	float step = 1f;
 
 	static readonly int
 		positionsId = Shader.PropertyToID("_Positions"),
 		resolutionId = Shader.PropertyToID("_Resolution"),
 		stepId = Shader.PropertyToID("_Step"),
-		timeId = Shader.PropertyToID("_Time");
+		timeId = Shader.PropertyToID("_Time"),
+		countId = Shader.PropertyToID("_Count");
 
 	void OnEnable() {
 		positionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * 4);
+		
+		computeShader.SetFloat(stepId, step);
+		computeShader.SetBuffer(0, positionsId, positionsBuffer);
+		computeShader.SetInt(resolutionId, resolution);
 	}
 
 	void OnDisable() {
@@ -40,17 +45,14 @@ public class GPUGraph : MonoBehaviour {
 
 	void Update() {
 		UpdateFunctionOnGPU();
+		counter++;
 	}
 
 	void UpdateFunctionOnGPU() {
-		float step = 1f;
-		computeShader.SetInt(resolutionId, resolution);
-		computeShader.SetFloat(stepId, step);
+		
 		computeShader.SetFloat(timeId, Time.time);
-		computeShader.SetBuffer(0, positionsId, positionsBuffer);
-
-		int groups = Mathf.CeilToInt(resolution / 8f);
-		computeShader.Dispatch(0, groups, groups, groups);
+		computeShader.SetInt(countId, counter);
+		computeShader.Dispatch(0, 1, 1, 1);
 
 		material.SetBuffer(positionsId, positionsBuffer);
 		material.SetFloat(stepId, step);

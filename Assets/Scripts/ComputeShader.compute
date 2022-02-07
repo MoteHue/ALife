@@ -1,0 +1,41 @@
+#pragma kernel FunctionKernel
+
+#define PI 3.14159265358979323846
+
+RWStructuredBuffer<float3> _Positions;
+uint _Resolution;
+float _Step;
+float _Time;
+
+uint _Count;
+
+[numthreads(1, 1, 1)]
+void FunctionKernel(uint3 id: SV_DispatchThreadID) {
+	//float2 uv = GetUV(id);
+	//SetPosition(id, Wave(uv.x, uv.y, _Time));
+	//SetPosition(id, GetPosFromID(id.x, id.y, id.z));
+
+	
+	float3 p;
+	p.x = 0;
+	p.y = 0;
+	p.z = 0;
+	_Positions[0] = p;
+	p.x = 1;
+	p.y = 1;
+	p.z = 1;
+	_Positions[1] = p;
+	p.x = 2;
+	p.y = 2;
+	p.z = 2;
+	_Positions[2] = p;
+	p.x = _Time;
+	p.y = _Time;
+	p.z = _Time;
+	_Positions[3] = p;
+	p.x = _Count;
+	p.y = _Count;
+	p.z = _Count;
+	_Positions[4] = p;
+}
+
