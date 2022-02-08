@@ -22,20 +22,24 @@ public class GPUSimulation : MonoBehaviour {
 
 	int counter = 0;
 	float step = 1f;
+	int indexStep = 0;
 
 	static readonly int
 		positionsId = Shader.PropertyToID("_Positions"),
 		resolutionId = Shader.PropertyToID("_Resolution"),
 		stepId = Shader.PropertyToID("_Step"),
 		timeId = Shader.PropertyToID("_Time"),
+		indexStepId = Shader.PropertyToID("_IndexStep"),
 		countId = Shader.PropertyToID("_Count");
 
 	void OnEnable() {
-		positionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * 4);
-		
+		positionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
+
+		indexStep = Mathf.CeilToInt(resolution / 4f);
 		computeShader.SetFloat(stepId, step);
 		computeShader.SetBuffer(0, positionsId, positionsBuffer);
 		computeShader.SetInt(resolutionId, resolution);
+		computeShader.SetInt(indexStepId, indexStep);
 	}
 
 	void OnDisable() {
@@ -52,7 +56,7 @@ public class GPUSimulation : MonoBehaviour {
 		
 		computeShader.SetFloat(timeId, Time.time);
 		computeShader.SetInt(countId, counter);
-		computeShader.Dispatch(0, 1, 1, 1);
+		computeShader.Dispatch(0, 4, 4, 4);
 
 		material.SetBuffer(positionsId, positionsBuffer);
 		material.SetFloat(stepId, step);
