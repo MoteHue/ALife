@@ -11,32 +11,24 @@ uint _IndexStep;
 uint _Count;
 
 uint GetIndex(uint3 id) {
-	return (id.x * 64) + (id.y * 64 * 4) + (id.z * 64 * 4 * 4);
+	return (id.x) + (id.y * 2) + (id.z * 2 * 2);
 }
 
-[numthreads(1, 1, 1)]
-void FunctionKernel(uint3 id: SV_GroupID) {
-	//float2 uv = GetUV(id);
-	//SetPosition(id, Wave(uv.x, uv.y, _Time));
-	//SetPosition(id, GetPosFromID(id.x, id.y, id.z));
-	uint index = GetIndex(id);
-	float3 p;
-	p.x = id.x * _IndexStep;
-	p.y = id.y * _IndexStep;
-	p.z = id.z * _IndexStep;
-	_Positions[index] = p;
-	
-	for (int x = 0; x < 4; x++) {
-		for (int y = 0; y < 4; y++) {
-			for (int z = 0; z < 4; z++) {
+[numthreads(2, 2, 2)]
+void FunctionKernel(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
+	uint groupIndex = GetIndex(gid);
+	uint groupThreadIndex = GetIndex(gtid);
+
+	for (uint x = 0; x < 4; x++) {
+		for (uint y = 0; y < 4; y++) {
+			for (uint z = 0; z < 4; z++) {
 				float3 p;
-				p.x = id.x * _IndexStep + x;
-				p.y = id.y * _IndexStep + y;
-				p.z = id.z * _IndexStep + z;
-				_Positions[index + x + y * 4 + z * 16] = p;
+				p.x = gid.x * 4 + gtid.x * 8 + x;
+				p.y = gid.y * 4 + gtid.y * 8 + y;
+				p.z = gid.z * 4 + gtid.z * 8 + z;
+				_Positions[groupIndex * 64 + 8 * 64 * groupThreadIndex + x + 4 * y + 16 * z] = p;
 			}
 		}
 	}
-	
 }
 
