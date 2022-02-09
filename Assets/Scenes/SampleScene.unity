@@ -1030,8 +1030,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: 98686e747917c9846bd5f7837fcbd46b, type: 3}
-  material: {fileID: 2100000, guid: 42dc4cc660f2e0d478d81e698db700a3, type: 2}
-  mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  agentMaterial: {fileID: 2100000, guid: 4cbddc032cfafd34f8771d311a3e87db, type: 2}
+  agentMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  cellMaterial: {fileID: 2100000, guid: 960fd4adaf6de514bbc4244dd81bbbcf, type: 2}
+  cellMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  pheromoneMaterial: {fileID: 2100000, guid: 42dc4cc660f2e0d478d81e698db700a3, type: 2}
+  pheromoneMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   resolution: 60
 --- !u!4 &150799854
 Transform:
@@ -5048,13 +5052,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -4}
+  m_LocalRotation: {x: 0.112769626, y: 0, z: 0, w: 0.9936212}
+  m_LocalPosition: {x: 29.7, y: 45.4, z: -53.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 12.95, y: 0, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0

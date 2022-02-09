@@ -1,20 +1,19 @@
-Shader "Custom/CustomSurfaceShader"
+Shader "Custom/OpaqueSurfaceShader"
 {
     Properties
     {
         _Color ("Color", Color) = (1,1,1,1)
-        _MainTex("Color (RGB) Alpha (A)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
     }
     SubShader
     {
-        Tags { "Queue" = "Transparent" "RenderType" = "Transparent" }
+        Tags { "RenderType" = "Opaque" }
         LOD 200
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard fullforwardshadows alpha
+        #pragma surface surf Standard fullforwardshadows
         #pragma instancing_options assumeuniformscaling procedural:ConfigureProcedural
         #pragma target 4.5
 
@@ -39,9 +38,14 @@ Shader "Custom/CustomSurfaceShader"
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
                 float3 position = _Positions[unity_InstanceID];
 
-                unity_ObjectToWorld = 0.0;
-                unity_ObjectToWorld._m03_m13_m23_m33 = float4(position, 1.0);
-                unity_ObjectToWorld._m00_m11_m22 = _Step;
+                if (position.x == -1 && position.y == -1 && position.z == -1) {
+                    unity_ObjectToWorld = 0.0;
+                }
+                else {
+                    unity_ObjectToWorld = 0.0;
+                    unity_ObjectToWorld._m03_m13_m23_m33 = float4(position, 1.0);
+                    unity_ObjectToWorld._m00_m11_m22 = _Step;
+                }
             #endif
         }
 
@@ -57,11 +61,9 @@ Shader "Custom/CustomSurfaceShader"
             // Albedo comes from a texture tinted by color
             fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
             o.Albedo = c.rgb;
-            o.Alpha = tex2D(_MainTex, IN.uv_MainTex).a;
             // Metallic and smoothness come from slider variables
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
-            o.Alpha = c.a;
         }
         ENDCG
     }

@@ -8,24 +8,40 @@ public class GPUSimulation : MonoBehaviour {
 	ComputeShader computeShader;
 
 	[SerializeField]
-	Material material;
+	Material agentMaterial;
+	[SerializeField]
+	Mesh agentMesh;
 
 	[SerializeField]
-	Mesh mesh;
+	Material cellMaterial;
+	[SerializeField]
+	Mesh cellMesh;
 
-	const int maxResolution = 100;
+	[SerializeField]
+	Material pheromoneMaterial;
+	[SerializeField]
+	Mesh pheromoneMesh;
+
+	const int maxResolution = 64;
 
 	[SerializeField, Range(10, maxResolution)]
 	int resolution = 20;
 
-	ComputeBuffer positionsBuffer;
+	ComputeBuffer
+		agentPositionsBuffer,
+		cellPositionsBuffer,
+		pheromonePositionsBuffer;
 
 	int counter = 0;
 	float step = 1f;
 	int indexStep = 0;
+	Bounds bounds;
 
 	static readonly int
-		positionsId = Shader.PropertyToID("_Positions"),
+		materialPositionsId = Shader.PropertyToID("_Positions"),
+		agentPositionsId = Shader.PropertyToID("_AgentPositions"),
+		cellPositionsId = Shader.PropertyToID("_CellPositions"),
+		pheromonePositionsId = Shader.PropertyToID("_PheromonePositions"),
 		resolutionId = Shader.PropertyToID("_Resolution"),
 		stepId = Shader.PropertyToID("_Step"),
 		timeId = Shader.PropertyToID("_Time"),
@@ -33,18 +49,26 @@ public class GPUSimulation : MonoBehaviour {
 		countId = Shader.PropertyToID("_Count");
 
 	void OnEnable() {
-		positionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
-
+		agentPositionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
+		cellPositionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
+		pheromonePositionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
+		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
 		indexStep = Mathf.CeilToInt(resolution / 4f);
 		computeShader.SetFloat(stepId, step);
-		computeShader.SetBuffer(0, positionsId, positionsBuffer);
+		computeShader.SetBuffer(0, agentPositionsId, agentPositionsBuffer);
+		computeShader.SetBuffer(0, cellPositionsId, cellPositionsBuffer);
+		computeShader.SetBuffer(0, pheromonePositionsId, pheromonePositionsBuffer);
 		computeShader.SetInt(resolutionId, resolution);
 		computeShader.SetInt(indexStepId, indexStep);
 	}
 
 	void OnDisable() {
-		positionsBuffer.Release();
-		positionsBuffer = null;
+		agentPositionsBuffer.Release();
+		agentPositionsBuffer = null;
+		cellPositionsBuffer.Release();
+		cellPositionsBuffer = null;
+		pheromonePositionsBuffer.Release();
+		pheromonePositionsBuffer = null;
 	}
 
 	void Update() {
@@ -58,10 +82,17 @@ public class GPUSimulation : MonoBehaviour {
 		computeShader.SetInt(countId, counter);
 		computeShader.Dispatch(0, 2, 2, 2);
 
-		material.SetBuffer(positionsId, positionsBuffer);
-		material.SetFloat(stepId, step);
-		var bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
-		Graphics.DrawMeshInstancedProcedural(mesh, 0, material, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		agentMaterial.SetBuffer(materialPositionsId, agentPositionsBuffer);
+		agentMaterial.SetFloat(stepId, step);
+		Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+		cellMaterial.SetBuffer(materialPositionsId, cellPositionsBuffer);
+		cellMaterial.SetFloat(stepId, step);
+		Graphics.DrawMeshInstancedProcedural(cellMesh, 0, cellMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+		pheromoneMaterial.SetBuffer(materialPositionsId, pheromonePositionsBuffer);
+		pheromoneMaterial.SetFloat(stepId, step);
+		Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, pheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
 	}
 
 }	
