@@ -35,7 +35,7 @@ public class GPUSimulation : MonoBehaviour {
 	void OnEnable() {
 		positionsBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, 3 * sizeof(float));
 
-		indexStep = (int)Mathf.Pow(Mathf.CeilToInt(resolution / 4f), 3f);
+		indexStep = Mathf.CeilToInt(resolution / 4f);
 		computeShader.SetFloat(stepId, step);
 		computeShader.SetBuffer(0, positionsId, positionsBuffer);
 		computeShader.SetInt(resolutionId, resolution);
@@ -61,7 +61,7 @@ public class GPUSimulation : MonoBehaviour {
 		material.SetBuffer(positionsId, positionsBuffer);
 		material.SetFloat(stepId, step);
 		var bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
-		Graphics.DrawMeshInstancedProcedural(mesh, 0, material, bounds, resolution * resolution * resolution);
+		Graphics.DrawMeshInstancedProcedural(mesh, 0, material, bounds, (int)Mathf.Pow(indexStep * 4, 3));
 	}
 
 }	

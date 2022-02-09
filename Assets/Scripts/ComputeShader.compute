@@ -1,7 +1,5 @@
 #pragma kernel FunctionKernel
 
-#define PI 3.14159265358979323846
-
 RWStructuredBuffer<float3> _Positions;
 uint _Resolution;
 float _Step;
@@ -11,22 +9,26 @@ uint _IndexStep;
 uint _Count;
 
 uint GetIndex(uint3 id) {
-	return (id.x) + (id.y * 2) + (id.z * 2 * 2);
+	return id.x + id.y * 4 + id.z * 16;
 }
 
 [numthreads(2, 2, 2)]
-void FunctionKernel(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
-	uint groupIndex = GetIndex(gid);
-	uint groupThreadIndex = GetIndex(gtid);
+void FunctionKernel(uint3 id: SV_DispatchThreadID) {
+	uint index = GetIndex(id);
 
-	for (uint x = 0; x < 4; x++) {
-		for (uint y = 0; y < 4; y++) {
-			for (uint z = 0; z < 4; z++) {
+	for (uint x = 0; x < _IndexStep; x++) {
+		for (uint y = 0; y < _IndexStep; y++) {
+			for (uint z = 0; z < _IndexStep; z++) {
 				float3 p;
-				p.x = gid.x * 4 + gtid.x * 8 + x;
-				p.y = gid.y * 4 + gtid.y * 8 + y;
-				p.z = gid.z * 4 + gtid.z * 8 + z;
-				_Positions[groupIndex * 64 + 8 * 64 * groupThreadIndex + x + 4 * y + 16 * z] = p;
+				p.x = id.x * _IndexStep + x;
+				p.y = id.y * _IndexStep + y;
+				p.z = id.z * _IndexStep + z;
+				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
+					_Positions[index * (_IndexStep * _IndexStep * _IndexStep) + x + y * _IndexStep + z * _IndexStep * _IndexStep] = p;
+				}
+				else {
+					_Positions[index * (_IndexStep * _IndexStep * _IndexStep) + x + y * _IndexStep + z * _IndexStep * _IndexStep] = float3(-100, -100, -100);
+				}
 			}
 		}
 	}
