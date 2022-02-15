@@ -1,22 +1,35 @@
 #pragma kernel FunctionKernel
 
-uint _Resolution;
-float _Step;
-float _Time;
-uint _IndexStep;
+#define maxResolution 64
 
+uint _Resolution;
+uint _IndexStep;
+float _Time;
+
+// Buffers to tell the surface shader where to generate the meshes.
 RWStructuredBuffer<float3> _AgentPositions;
 RWStructuredBuffer<float3> _CellPositions;
 RWStructuredBuffer<float3> _PheromonePositions;
 
-uint _Count;
+// Buffers used for calculations.
+RWStructuredBuffer<uint> _AgentValues;
+RWStructuredBuffer<uint> _CellValues;
+RWStructuredBuffer<float> _PheromoneValues;
+RWStructuredBuffer<float3> _SpawnLocations;
 
-uint GetIndex(uint3 id) {
-	return id.x + id.y * 4 + id.z * 16;
+float placementProbability = 0.1;
+float alpha = 1 / 7;
+float decay = 0.9;
+
+uint GetIndexLocal(uint3 id, uint x, uint y, uint z) {
+	return (id.x * _IndexStep + x) + (id.y * _IndexStep + y) * _Resolution + (id.z * _IndexStep + z) * _Resolution * _Resolution;
 }
 
-void EntireGridDebugFunction(uint3 id) {
-	uint index = GetIndex(id);
+uint GetIndexGlobal(float3 pos) {
+	return pos.x + pos.y * _Resolution + pos.z * _Resolution * _Resolution;
+}
+
+void FillEntireGridDebugFunction(uint3 id) {
 	for (uint x = 0; x < _IndexStep; x++) {
 		for (uint y = 0; y < _IndexStep; y++) {
 			for (uint z = 0; z < _IndexStep; z++) {
@@ -25,22 +38,77 @@ void EntireGridDebugFunction(uint3 id) {
 				p.y = id.y * _IndexStep + y;
 				p.z = id.z * _IndexStep + z;
 				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
-					_PheromonePositions[index * (_IndexStep * _IndexStep * _IndexStep) + x + y * _IndexStep + z * _IndexStep * _IndexStep] = p;
+					if (_AgentValues[GetIndexLocal(id, x, y, z)] > 0) {
+						_AgentPositions[GetIndexLocal(id, x, y, z)] = p;
+					}
 				}
 			}
 		}
 	}
 }
 
+void VisualiseGrid(uint3 id) {
+	for (uint x = 0; x < _IndexStep; x++) {
+		for (uint y = 0; y < _IndexStep; y++) {
+			for (uint z = 0; z < _IndexStep; z++) {
+				float3 p;
+				p.x = id.x * _IndexStep + x;
+				p.y = id.y * _IndexStep + y;
+				p.z = id.z * _IndexStep + z;
+				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
+					if (_AgentValues[GetIndexLocal(id, x, y, z)] > 0) {
+						_AgentPositions[GetIndexLocal(id, x, y, z)] = p;
+					} else {
+						_AgentPositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
+					}
+					if (_CellValues[GetIndexLocal(id, x, y, z)] > 0) {
+						_CellPositions[GetIndexLocal(id, x, y, z)] = p;
+					} else {
+						_CellPositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
+					}
+					if (_PheromoneValues[GetIndexLocal(id, x, y, z)] > 0) {
+						_PheromonePositions[GetIndexLocal(id, x, y, z)] = p;
+					} else {
+						_PheromonePositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
+					}
+				}
+			}
+		}
+	}
+}
+
+int Rand(int min, int max, float2 seed) {
+	float random = frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453123);
+	int range = max - min;
+
+	return min + floor(random * range);
+}
+
+float2 GetSeed(uint3 id) {
+	return float2(id.x + id.z * 4 + _Time, id.y + id.z * 4 + _Time);
+}
+
+void MakeMove(float3 currentPos, float3 newPos) {
+	_AgentValues[GetIndexGlobal(newPos)]++;
+	_AgentValues[GetIndexGlobal(currentPos)]--;
+}
+
+float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
+	uint numStructs;
+	uint stride;
+	_SpawnLocations.GetDimensions(numStructs, stride);
+
+	float3 newPos = _SpawnLocations[Rand(0, numStructs, GetSeed(id))];
+
+	MakeMove(currentPos, newPos);
+	return newPos;
+}
+
 [numthreads(2, 2, 2)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
-	// (-1, -1, -1) positions aren't rendered.
-	for (uint i = 0; i < 64 * 64 * 64; i++) {
-		_AgentPositions[i] = float3(-1, -1, -1);
-		_CellPositions[i] = float3(-1, -1, -1);
-		_PheromonePositions[i] = float3(-1, -1, -1);
-	}
 
-	EntireGridDebugFunction(id);
+	
+
+	VisualiseGrid(id);
 }
 
