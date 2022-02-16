@@ -34,7 +34,10 @@ public class GPUSimulation : MonoBehaviour {
 		agentValuesBuffer,
 		cellValuesBuffer,
 		pheromoneValuesBuffer,
-		spawnLocationsBuffer;
+		spawnLocationsBuffer,
+		pastAgentValuesBuffer,
+		pastCellValuesBuffer,
+		pastPheromoneValuesBuffer;
 
 	int counter = 0;
 	float step = 1f;
@@ -50,6 +53,9 @@ public class GPUSimulation : MonoBehaviour {
 		agentValuesId = Shader.PropertyToID("_AgentValues"),
 		cellValuesId = Shader.PropertyToID("_CellValues"),
 		pheromoneValuesId = Shader.PropertyToID("_PheromoneValues"),
+		pastAgentValuesId = Shader.PropertyToID("_PastAgentValues"),
+		pastCellValuesId = Shader.PropertyToID("_PastCellValues"),
+		pastPheromoneValuesId = Shader.PropertyToID("_PastPheromoneValues"),
 		resolutionId = Shader.PropertyToID("_Resolution"),
 		stepId = Shader.PropertyToID("_Step"),
 		timeId = Shader.PropertyToID("_Time"),
@@ -68,6 +74,8 @@ public class GPUSimulation : MonoBehaviour {
 		}
 		cellValuesBuffer.SetData(values);
 		pheromoneValuesBuffer.SetData(values);
+		pastCellValuesBuffer.SetData(values);
+		pastPheromoneValuesBuffer.SetData(values);
 	}
 
     private void Start() {
@@ -77,6 +85,9 @@ public class GPUSimulation : MonoBehaviour {
 		agentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
 		cellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
 		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
+		pastAgentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
+		pastCellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
+		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
@@ -85,17 +96,18 @@ public class GPUSimulation : MonoBehaviour {
 
 		spawnLocations = new List<Vector3>();
 		GenerateSpawnLocations();
-		emptyValuesVector4 = new List<Vector4>();
-		for (int i = 0; i < (maxResolution * maxResolution * maxResolution); i++) {
-			emptyValuesVector4.Add(new Vector4(-1, -1, -1, -1));
-		}
 		AddPositionsToBuffers();
-		agentValuesBuffer.SetData(SpawnAgents(300));
+		List<Vector4> values = SpawnAgents(300);
+		agentValuesBuffer.SetData(values);
+		pastAgentValuesBuffer.SetData(values);
 		spawnLocationsBuffer.SetData(spawnLocations);
 
 		computeShader.SetBuffer(0, agentValuesId, agentValuesBuffer);
 		computeShader.SetBuffer(0, cellValuesId, cellValuesBuffer);
 		computeShader.SetBuffer(0, pheromoneValuesId, pheromoneValuesBuffer);
+		computeShader.SetBuffer(0, pastAgentValuesId, pastAgentValuesBuffer);
+		computeShader.SetBuffer(0, pastCellValuesId, pastCellValuesBuffer);
+		computeShader.SetBuffer(0, pastPheromoneValuesId, pastPheromoneValuesBuffer);
 		computeShader.SetBuffer(0, spawnLocationsId, spawnLocationsBuffer);
 
 		computeShader.SetInt(resolutionId, resolution);
@@ -109,6 +121,12 @@ public class GPUSimulation : MonoBehaviour {
 		cellValuesBuffer = null;
 		pheromoneValuesBuffer.Release();
 		pheromoneValuesBuffer = null;
+		pastAgentValuesBuffer.Release();
+		pastAgentValuesBuffer = null;
+		pastCellValuesBuffer.Release();
+		pastCellValuesBuffer = null;
+		pastPheromoneValuesBuffer.Release();
+		pastPheromoneValuesBuffer = null;
 		spawnLocationsBuffer.Release();
 		spawnLocationsBuffer = null;
 	}
@@ -121,7 +139,18 @@ public class GPUSimulation : MonoBehaviour {
 	void UpdateFunctionOnGPU() {
 		
 		computeShader.SetFloat(timeId, Time.time);
+
 		computeShader.Dispatch(0, 2, 2, 2);
+
+		Vector4[] values = new Vector4[maxResolution * maxResolution * maxResolution];
+		agentValuesBuffer.GetData(values);
+		pastAgentValuesBuffer.SetData(values);
+
+		cellValuesBuffer.GetData(values);
+		pastCellValuesBuffer.SetData(values);
+
+		pheromoneValuesBuffer.GetData(values);
+		pastPheromoneValuesBuffer.SetData(values);
 
 		agentMaterial.SetBuffer(materialPositionsId, agentValuesBuffer);
 		agentMaterial.SetFloat(stepId, step);

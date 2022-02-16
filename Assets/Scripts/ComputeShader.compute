@@ -10,11 +10,10 @@ float _Time;
 RWStructuredBuffer<float4> _AgentValues;
 RWStructuredBuffer<float4> _CellValues;
 RWStructuredBuffer<float4> _PheromoneValues;
-RWStructuredBuffer<float3> _SpawnLocations;
-
-float placementProbability = 0.1;
-float alpha = 1 / 7;
-float decay = 0.9;
+RWStructuredBuffer<float4> _PastAgentValues;
+RWStructuredBuffer<float4> _PastCellValues;
+RWStructuredBuffer<float4> _PastPheromoneValues;
+StructuredBuffer<float3> _SpawnLocations;
 
 uint GetIndexLocal(uint3 id, uint x, uint y, uint z) {
 	return (id.x * _IndexStep + x) + (id.y * _IndexStep + y) * _Resolution + (id.z * _IndexStep + z) * _Resolution * _Resolution;
@@ -69,10 +68,368 @@ float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
 	return newPos;
 }
 
+bool CheckNoObstructions(float3 currentPos, float3 move) {
+    int axisCount = 0;
+    if (move.x != 0) axisCount++;
+    if (move.y != 0) axisCount++;
+    if (move.z != 0) axisCount++;
+
+    if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y + move.y, currentPos.z + move.z))].w == 0) {
+        if (axisCount == 3) { // Check for movement through wall diagonals
+            if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } else if (axisCount == 2) {
+            if (move.x != 0 && move.y != 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else if (move.x != 0 && move.z != 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else if (move.y != 0 && move.z != 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    } else {
+        return false;
+    }
+}
+
+bool CheckNeighbouringSurface(uint x, uint y, uint z) {
+    if (y == 0) return true;
+
+    if (x != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0) {
+            return true;
+        }
+    }
+    if (y != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))].w != 0) {
+            return true;
+        }
+    }
+    if (z != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0) {
+            return true;
+        }
+    }
+    if (x != _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0) {
+            return true;
+        }
+    }
+    if (y != _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))].w != 0) {
+            return true;
+        }
+    }
+    if (z != _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
+    float3 possibleMoves[26];
+
+    uint counter = 0;
+
+    for (int x = -1; x <= 1; x++) {    
+        //if (pos.x + x >= 0 && pos.x + x < gridUI.width) {
+        for (int y = -1; y <= 1; y++) {
+            if (currentPos.y + y >= 0 && currentPos.y + y < (float)_Resolution) { // Can't move out of grid vertically
+                for (int z = -1; z <= 1; z++) {
+                    //if (pos.z + z >= 0 && pos.z + z < gridUI.depth) {
+                    if ((x != 0 || y != 0 || z != 0)) {
+                        if (currentPos.x + x < 0 || currentPos.x + x >= (float)_Resolution || currentPos.z + z < 0 || currentPos.z + z >= (float)_Resolution) { // Moving out of grid
+                            possibleMoves[counter] = float3(x, y, z);
+                            counter++;
+                        } else if (CheckNoObstructions(currentPos, float3(x, y, z)) && CheckNeighbouringSurface(currentPos.x + x, currentPos.y + y, currentPos.z + z)) { // Moving within grid
+                            possibleMoves[counter] = float3 (x, y, z);
+                            counter++;
+                        }
+                    }
+                    //}
+                }
+            }
+        }
+        //}
+    }
+
+    if (counter != 0) {
+        float3 move = possibleMoves[Rand(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z )];
+        if (currentPos.x + move.x < 0 || currentPos.x + move.x >= (float)_Resolution || currentPos.z + move.z < 0 || currentPos.z + move.z >= (float)_Resolution) { // Moving out of grid
+            float3 newPos = CompleteLifeCycle(id, currentPos);
+            return newPos;
+        } else { // Moving within grid
+            MakeMove(currentPos, currentPos + move);
+            return currentPos + move;
+        }
+
+    } else {
+        float3 newPos = CompleteLifeCycle(id, currentPos);
+        return newPos;
+    }
+}
+
+void PlaceBlockAt(uint3 id, int x, int y, int z) {
+    _CellValues[GetIndexGlobal(float3(x, y, z))].w = 1;
+    CompleteLifeCycle(id, float3(x, y, z));
+}
+
+// 1. Either the location immediately underneath or immediately above the site must contain material.
+// The floor, represented by y == -1, counts as material.
+bool Rule1(int x, int y, int z) {
+    if (y == 0) {
+        return true;
+    }
+    if (y > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))].w != 0) {
+            return true;
+        }
+    }
+    if (y < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))].w != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+// 2. The site must share a face with a horizontally adjacent location that contains material and satisfies (1).
+bool Rule2(int x, int y, int z) {
+    if (x < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0 && Rule1(x + 1, y, z)) {
+            return true;
+        }
+    }
+    if (x > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0 && Rule1(x - 1, y, z)) {
+            return true;
+        }
+    }
+    if (z < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0 && Rule1(x, y, z + 1)) {
+            return true;
+        }
+    }
+    if (z > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0 && Rule1(x, y, z - 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 3. One face of the site must neighbour three horizontally adjacent locations that each contain material.
+bool Rule3(int x, int y, int z) {
+    if (x < (float) _Resolution - 2 && z > 0 && z < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))].w != 0) {
+            return true;
+        }
+    }
+    if (x > 0 && z > 0 && z < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))].w != 0) {
+            return true;
+        }
+    }
+    if (z < (float) _Resolution - 2 && x > 0 && x < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))].w != 0) {
+            return true;
+        }
+    }
+    if (z > 0 && x > 0 && x < (float) _Resolution - 2) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))].w != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TryPlaceBlock(uint3 id, float3 currentPos) {
+    if (Rand(0, 100, GetSeed(id) + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z) <= 10) {
+        if (Rule1(currentPos.x, currentPos.y, currentPos.z) || Rule2(currentPos.x, currentPos.y, currentPos.z) || Rule3(currentPos.x, currentPos.y, currentPos.z)) {
+            if (_PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].w >= 0.1f && _PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].w <= 0.5f) {
+                PlaceBlockAt(id, currentPos.x, currentPos.y, currentPos.z);
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+// Diffuses pheromone from neighbouring cells. If there is a block in the neighbouring cell, the diffusion value is instead sent back. Edges of the grid are considered to be empty of pheromone.
+float CalcDiffusionFromNeighbours(float3 pos) {
+    float sum = 0.0;
+    float value = _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z))].w;
+    float alpha = 1.0 / 7.0;
+
+    if (pos.x > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.x < (float) _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.y > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w);            
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w;
+        }
+    } // Note there is no else as the floor is considered to be made of blocks.
+    if (pos.y < (float) _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.z > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.z < (float) _Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+
+    return sum;
+}
+
+void DecayPheromoneValues(uint3 id) {
+    for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                if (_PheromoneValues[GetIndexLocal(id, x, y, z)].w > 0)
+                _PheromoneValues[GetIndexLocal(id, x, y, z)].w *= 0.9;
+            }
+        }
+    }
+}
+
+void AgentStepThroughTime(uint3 id) {
+    float3 positions[1000];
+    int counter = 0;
+
+    for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)].w; i++) {
+                    positions[counter] = TryMakeMove(id, float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z), i);
+                    counter++;
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < counter; i++) {
+        TryPlaceBlock(id, positions[i]);
+    }
+}
+
+void PheromoneStepThroughTime(uint3 id) {
+    DecayPheromoneValues(id);
+
+    for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                if (_PastCellValues[GetIndexLocal(id, x, y, z)].w == 0) {
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].w += CalcDiffusionFromNeighbours(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].w < 0.01f) _PheromoneValues[GetIndexLocal(id, x, y, z)].w = 0;
+                }
+            }
+        }
+    }
+}
+
 [numthreads(2, 2, 2)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
 
 	//FillEntireGridDebugFunction(id);
+
+    AgentStepThroughTime(id);
+
+    PheromoneStepThroughTime(id);
+
+    if (id.x == 0 && id.y == 0 && id.z == 0) {
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 27))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 28))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 29))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 30))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 31))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 32))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(33, 0, 33))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 26))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 27))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 28))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 29))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 30))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 31))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(33, 0, 32))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(26, 0, 27))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 28))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 29))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 30))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 31))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 32))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 33))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 1, 27))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 1, 28))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 1, 29))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 1, 30))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 1, 31))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 1, 32))].w = 400;
+    }
+
+    
 
 }
 
