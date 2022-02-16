@@ -6,15 +6,10 @@ uint _Resolution;
 uint _IndexStep;
 float _Time;
 
-// Buffers to tell the surface shader where to generate the meshes.
-RWStructuredBuffer<float3> _AgentPositions;
-RWStructuredBuffer<float3> _CellPositions;
-RWStructuredBuffer<float3> _PheromonePositions;
-
 // Buffers used for calculations.
-RWStructuredBuffer<uint> _AgentValues;
-RWStructuredBuffer<uint> _CellValues;
-RWStructuredBuffer<float> _PheromoneValues;
+RWStructuredBuffer<float4> _AgentValues;
+RWStructuredBuffer<float4> _CellValues;
+RWStructuredBuffer<float4> _PheromoneValues;
 RWStructuredBuffer<float3> _SpawnLocations;
 
 float placementProbability = 0.1;
@@ -38,39 +33,9 @@ void FillEntireGridDebugFunction(uint3 id) {
 				p.y = id.y * _IndexStep + y;
 				p.z = id.z * _IndexStep + z;
 				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
-					if (_AgentValues[GetIndexLocal(id, x, y, z)] > 0) {
-						_AgentPositions[GetIndexLocal(id, x, y, z)] = p;
-					}
-				}
-			}
-		}
-	}
-}
-
-void VisualiseGrid(uint3 id) {
-	for (uint x = 0; x < _IndexStep; x++) {
-		for (uint y = 0; y < _IndexStep; y++) {
-			for (uint z = 0; z < _IndexStep; z++) {
-				float3 p;
-				p.x = id.x * _IndexStep + x;
-				p.y = id.y * _IndexStep + y;
-				p.z = id.z * _IndexStep + z;
-				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
-					if (_AgentValues[GetIndexLocal(id, x, y, z)] > 0) {
-						_AgentPositions[GetIndexLocal(id, x, y, z)] = p;
-					} else {
-						_AgentPositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
-					}
-					if (_CellValues[GetIndexLocal(id, x, y, z)] > 0) {
-						_CellPositions[GetIndexLocal(id, x, y, z)] = p;
-					} else {
-						_CellPositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
-					}
-					if (_PheromoneValues[GetIndexLocal(id, x, y, z)] > 0) {
-						_PheromonePositions[GetIndexLocal(id, x, y, z)] = p;
-					} else {
-						_PheromonePositions[GetIndexLocal(id, x, y, z)] = float3 (-1, -1, -1);
-					}
+					//if (_AgentValues[GetIndexLocal(id, x, y, z)].w > 0) {
+						_PheromoneValues[GetIndexLocal(id, x, y, z)] = float4 (p.x, p.y, p.z, 1);
+					//}
 				}
 			}
 		}
@@ -89,8 +54,8 @@ float2 GetSeed(uint3 id) {
 }
 
 void MakeMove(float3 currentPos, float3 newPos) {
-	_AgentValues[GetIndexGlobal(newPos)]++;
-	_AgentValues[GetIndexGlobal(currentPos)]--;
+	_AgentValues[GetIndexGlobal(newPos)].w++;
+	_AgentValues[GetIndexGlobal(currentPos)].w--;
 }
 
 float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
@@ -107,8 +72,7 @@ float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
 [numthreads(2, 2, 2)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
 
-	
+	//FillEntireGridDebugFunction(id);
 
-	VisualiseGrid(id);
 }
 
