@@ -14,7 +14,7 @@ Shader "Custom/TransparentSurfaceShader"
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard fullforwardshadows alpha
+        #pragma surface surf Standard fullforwardshadows alpha:fade
         #pragma instancing_options assumeuniformscaling procedural:ConfigureProcedural
         #pragma target 4.5
 
@@ -30,22 +30,26 @@ Shader "Custom/TransparentSurfaceShader"
         fixed4 _Color;
 
         float _Step;
+        int _Resolution;
+
+        float alpha;
 
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                StructuredBuffer<float4> _Positions;
+                StructuredBuffer<float> _Values;
         #endif
 
         void ConfigureProcedural() {
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                float4 position = _Positions[unity_InstanceID];
+                float value = _Values[unity_InstanceID];
 
-                if (position.w <= 0) {
+                if (value <= 0) {
                     unity_ObjectToWorld = 0.0;
                 }
                 else {
                     unity_ObjectToWorld = 0.0;
-                    unity_ObjectToWorld._m03_m13_m23_m33 = float4(position.x, position.y, position.z, 1.0);
+                    unity_ObjectToWorld._m03_m13_m23_m33 = float4(unity_InstanceID % _Resolution, (unity_InstanceID / _Resolution) % _Resolution , (unity_InstanceID / (_Resolution * _Resolution)) % _Resolution, 1.0);
                     unity_ObjectToWorld._m00_m11_m22 = _Step;
+                    alpha = (value / 400) + 0.1;
                 }
             #endif
         }
@@ -62,7 +66,7 @@ Shader "Custom/TransparentSurfaceShader"
             // Albedo comes from a texture tinted by color
             fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
             o.Albedo = c.rgb;
-            o.Alpha = c.a;
+            o.Alpha = alpha;
             // Metallic and smoothness come from slider variables
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;

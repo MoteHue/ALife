@@ -44,12 +44,14 @@ public class GPUSimulation : MonoBehaviour {
 	int indexStep = 0;
 	Bounds bounds;
 
-	List<Vector4> emptyValuesVector4;
+	bool pheromonesEnabled = true;
+	bool cellsEnabled = true;
+	bool agentsEnabled = true;
 
 	List<Vector3> spawnLocations;
 
 	static readonly int
-		materialPositionsId = Shader.PropertyToID("_Positions"),
+		materialValuesId = Shader.PropertyToID("_Values"),
 		agentValuesId = Shader.PropertyToID("_AgentValues"),
 		cellValuesId = Shader.PropertyToID("_CellValues"),
 		pheromoneValuesId = Shader.PropertyToID("_PheromoneValues"),
@@ -60,34 +62,20 @@ public class GPUSimulation : MonoBehaviour {
 		stepId = Shader.PropertyToID("_Step"),
 		timeId = Shader.PropertyToID("_Time"),
 		indexStepId = Shader.PropertyToID("_IndexStep"),
-		spawnLocationsId = Shader.PropertyToID("_SpawnLocations");
-
-	void AddPositionsToBuffers() {
-		List<Vector4> values = new List<Vector4>();
-		for (int z = 0; z < resolution; z++) {
-			for (int y = 0; y < resolution; y++) {
-				for (int x = 0; x < resolution; x++) {
-					Vector4 value = new Vector4(x, y, z, 0);
-					values.Add(value);
-				}
-			}
-		}
-		cellValuesBuffer.SetData(values);
-		pheromoneValuesBuffer.SetData(values);
-		pastCellValuesBuffer.SetData(values);
-		pastPheromoneValuesBuffer.SetData(values);
-	}
+		spawnLocationsId = Shader.PropertyToID("_SpawnLocations"),
+		meshEnabledId = Shader.PropertyToID("_Enabled"),
+		counterId = Shader.PropertyToID("_Counter");
 
     private void Start() {
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
 
-		agentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
-		cellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
-		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
-		pastAgentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
-		pastCellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
-		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 4);
+		agentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		cellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pastAgentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pastCellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
@@ -96,10 +84,6 @@ public class GPUSimulation : MonoBehaviour {
 
 		spawnLocations = new List<Vector3>();
 		GenerateSpawnLocations();
-		AddPositionsToBuffers();
-		List<Vector4> values = SpawnAgents(300);
-		agentValuesBuffer.SetData(values);
-		pastAgentValuesBuffer.SetData(values);
 		spawnLocationsBuffer.SetData(spawnLocations);
 
 		computeShader.SetBuffer(0, agentValuesId, agentValuesBuffer);
@@ -112,6 +96,12 @@ public class GPUSimulation : MonoBehaviour {
 
 		computeShader.SetInt(resolutionId, resolution);
 		computeShader.SetInt(indexStepId, indexStep);
+		computeShader.SetBool(meshEnabledId, pheromonesEnabled);
+		computeShader.SetInt(counterId, counter);
+
+		agentMaterial.SetInt(resolutionId, resolution);
+		cellMaterial.SetInt(resolutionId, resolution);
+		pheromoneMaterial.SetInt(resolutionId, resolution);
 	}
 
 	void OnDisable() {
@@ -134,15 +124,21 @@ public class GPUSimulation : MonoBehaviour {
 	void Update() {
 		UpdateFunctionOnGPU();
 		counter++;
+		if (counter == 200) {
+			List<float> values = SpawnAgents(300);
+			agentValuesBuffer.SetData(values);
+			pastAgentValuesBuffer.SetData(values);
+		}
 	}
 
 	void UpdateFunctionOnGPU() {
 		
 		computeShader.SetFloat(timeId, Time.time);
+		computeShader.SetInt(counterId, counter);
 
 		computeShader.Dispatch(0, 2, 2, 2);
 
-		Vector4[] values = new Vector4[maxResolution * maxResolution * maxResolution];
+		float[] values = new float[maxResolution * maxResolution * maxResolution];
 		agentValuesBuffer.GetData(values);
 		pastAgentValuesBuffer.SetData(values);
 
@@ -152,17 +148,24 @@ public class GPUSimulation : MonoBehaviour {
 		pheromoneValuesBuffer.GetData(values);
 		pastPheromoneValuesBuffer.SetData(values);
 
-		agentMaterial.SetBuffer(materialPositionsId, agentValuesBuffer);
-		agentMaterial.SetFloat(stepId, step);
-		Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-
-		cellMaterial.SetBuffer(materialPositionsId, cellValuesBuffer);
-		cellMaterial.SetFloat(stepId, step);
-		Graphics.DrawMeshInstancedProcedural(cellMesh, 0, cellMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-
-		pheromoneMaterial.SetBuffer(materialPositionsId, pheromoneValuesBuffer);
-		pheromoneMaterial.SetFloat(stepId, step);
-		Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, pheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		if (agentsEnabled) {
+			agentMaterial.SetFloat(stepId, step);
+			agentMaterial.SetBuffer(materialValuesId, agentValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
+		
+		if (cellsEnabled) {
+			cellMaterial.SetFloat(stepId, step);
+			cellMaterial.SetBuffer(materialValuesId, cellValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(cellMesh, 0, cellMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
+		
+		if (pheromonesEnabled) {
+			pheromoneMaterial.SetFloat(stepId, step);
+			pheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, pheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
+		
 	}
 
 	void GenerateSpawnLocations() {
@@ -180,26 +183,11 @@ public class GPUSimulation : MonoBehaviour {
 		}
 	}
 
-	List<int> GenerateRandomChoices(int minInclusive, int maxExclusive, int amount) {
-		List<int> returnList = new List<int>();
-
-		for (int i = 0; i < amount; i++) {
-			returnList.Add(Random.Range(minInclusive, maxExclusive));
+	List<float> SpawnAgents(int amount) {
+		List<float> returnList = new List<float>();
+		for (int i = 0; i < resolution * resolution * resolution; i++) {
+			returnList.Add(0);
         }
-
-		return returnList;
-    }
-
-	List<Vector4> SpawnAgents(int amount) {
-		List<Vector4> returnList = new List<Vector4>();
-		for (int z = 0; z < resolution; z++) {
-			for (int y = 0; y < resolution; y++) {
-				for (int x = 0; x < resolution; x++) {
-					Vector4 value = new Vector4(x, y, z, 0);
-					returnList.Add(value);
-				}
-			}
-		}
 
 		int counter = 0;
 		while (counter < amount) {
@@ -207,11 +195,23 @@ public class GPUSimulation : MonoBehaviour {
 
 			int index = (int)(newPos.x + resolution * newPos.y + resolution * resolution * newPos.z);
 
-			returnList[index] = new Vector4(newPos.x, newPos.y, newPos.z, returnList[index].w + 1);
+			returnList[index]++;
 			counter++;
 		}
 
 		return returnList;
+	}
+
+	public void TogglePheromones() {
+		pheromonesEnabled = !pheromonesEnabled;
+    }
+
+	public void ToggleCells() {
+		cellsEnabled = !cellsEnabled;
+	}
+
+	public void ToggleAgents() {
+		agentsEnabled = !agentsEnabled;
 	}
 
 }	

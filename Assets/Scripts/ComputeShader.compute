@@ -5,14 +5,15 @@
 uint _Resolution;
 uint _IndexStep;
 float _Time;
+uint _Counter;
 
 // Buffers used for calculations.
-RWStructuredBuffer<float4> _AgentValues;
-RWStructuredBuffer<float4> _CellValues;
-RWStructuredBuffer<float4> _PheromoneValues;
-RWStructuredBuffer<float4> _PastAgentValues;
-RWStructuredBuffer<float4> _PastCellValues;
-RWStructuredBuffer<float4> _PastPheromoneValues;
+RWStructuredBuffer<float> _AgentValues;
+RWStructuredBuffer<float> _CellValues;
+RWStructuredBuffer<float> _PheromoneValues;
+RWStructuredBuffer<float> _PastAgentValues;
+RWStructuredBuffer<float> _PastCellValues;
+RWStructuredBuffer<float> _PastPheromoneValues;
 StructuredBuffer<float3> _SpawnLocations;
 
 uint GetIndexLocal(uint3 id, uint x, uint y, uint z) {
@@ -21,24 +22,6 @@ uint GetIndexLocal(uint3 id, uint x, uint y, uint z) {
 
 uint GetIndexGlobal(float3 pos) {
 	return pos.x + pos.y * _Resolution + pos.z * _Resolution * _Resolution;
-}
-
-void FillEntireGridDebugFunction(uint3 id) {
-	for (uint x = 0; x < _IndexStep; x++) {
-		for (uint y = 0; y < _IndexStep; y++) {
-			for (uint z = 0; z < _IndexStep; z++) {
-				float3 p;
-				p.x = id.x * _IndexStep + x;
-				p.y = id.y * _IndexStep + y;
-				p.z = id.z * _IndexStep + z;
-				if ((uint)p.x < _Resolution && (uint)p.y < _Resolution && (uint)p.z < _Resolution) {
-					//if (_AgentValues[GetIndexLocal(id, x, y, z)].w > 0) {
-						_PheromoneValues[GetIndexLocal(id, x, y, z)] = float4 (p.x, p.y, p.z, 1);
-					//}
-				}
-			}
-		}
-	}
 }
 
 int Rand(int min, int max, float2 seed) {
@@ -53,8 +36,8 @@ float2 GetSeed(uint3 id) {
 }
 
 void MakeMove(float3 currentPos, float3 newPos) {
-	_AgentValues[GetIndexGlobal(newPos)].w++;
-	_AgentValues[GetIndexGlobal(currentPos)].w--;
+	_AgentValues[GetIndexGlobal(newPos)]++;
+	_AgentValues[GetIndexGlobal(currentPos)]--;
 }
 
 float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
@@ -74,28 +57,28 @@ bool CheckNoObstructions(float3 currentPos, float3 move) {
     if (move.y != 0) axisCount++;
     if (move.z != 0) axisCount++;
 
-    if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y + move.y, currentPos.z + move.z))].w == 0) {
+    if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y + move.y, currentPos.z + move.z))] == 0) {
         if (axisCount == 3) { // Check for movement through wall diagonals
-            if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+            if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
                 return true;
             } else {
                 return false;
             }
         } else if (axisCount == 2) {
             if (move.x != 0 && move.y != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0) {
                     return true;
                 } else {
                     return false;
                 }
             } else if (move.x != 0 && move.z != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
                     return true;
                 } else {
                     return false;
                 }
             } else if (move.y != 0 && move.z != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))].w == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))].w == 0) {
+                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
                     return true;
                 } else {
                     return false;
@@ -115,32 +98,32 @@ bool CheckNeighbouringSurface(uint x, uint y, uint z) {
     if (y == 0) return true;
 
     if (x != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0) {
             return true;
         }
     }
     if (y != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))] != 0) {
             return true;
         }
     }
     if (z != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0) {
             return true;
         }
     }
     if (x != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0) {
             return true;
         }
     }
     if (y != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))] != 0) {
             return true;
         }
     }
     if (z != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0) {
             return true;
         }
     }
@@ -191,7 +174,7 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
 }
 
 void PlaceBlockAt(uint3 id, int x, int y, int z) {
-    _CellValues[GetIndexGlobal(float3(x, y, z))].w = 1;
+    _CellValues[GetIndexGlobal(float3(x, y, z))] = 1;
     CompleteLifeCycle(id, float3(x, y, z));
 }
 
@@ -202,12 +185,12 @@ bool Rule1(int x, int y, int z) {
         return true;
     }
     if (y > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))] != 0) {
             return true;
         }
     }
     if (y < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))] != 0) {
             return true;
         }
     }
@@ -218,22 +201,22 @@ bool Rule1(int x, int y, int z) {
 // 2. The site must share a face with a horizontally adjacent location that contains material and satisfies (1).
 bool Rule2(int x, int y, int z) {
     if (x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0 && Rule1(x + 1, y, z)) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0 && Rule1(x + 1, y, z)) {
             return true;
         }
     }
     if (x > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0 && Rule1(x - 1, y, z)) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0 && Rule1(x - 1, y, z)) {
             return true;
         }
     }
     if (z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0 && Rule1(x, y, z + 1)) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0 && Rule1(x, y, z + 1)) {
             return true;
         }
     }
     if (z > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0 && Rule1(x, y, z - 1)) {
+        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0 && Rule1(x, y, z - 1)) {
             return true;
         }
     }
@@ -243,22 +226,22 @@ bool Rule2(int x, int y, int z) {
 // 3. One face of the site must neighbour three horizontally adjacent locations that each contain material.
 bool Rule3(int x, int y, int z) {
     if (x < (float) _Resolution - 2 && z > 0 && z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))] != 0) {
             return true;
         }
     }
     if (x > 0 && z > 0 && z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))] != 0) {
             return true;
         }
     }
     if (z < (float) _Resolution - 2 && x > 0 && x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z + 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))] != 0) {
             return true;
         }
     }
     if (z > 0 && x > 0 && x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z - 1))].w != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))].w != 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))] != 0) {
             return true;
         }
     }
@@ -268,7 +251,7 @@ bool Rule3(int x, int y, int z) {
 bool TryPlaceBlock(uint3 id, float3 currentPos) {
     if (Rand(0, 100, GetSeed(id) + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z) <= 10) {
         if (Rule1(currentPos.x, currentPos.y, currentPos.z) || Rule2(currentPos.x, currentPos.y, currentPos.z) || Rule3(currentPos.x, currentPos.y, currentPos.z)) {
-            if (_PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].w >= 0.1f && _PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].w <= 0.5f) {
+            if (_PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))] >= 0.1f && _PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))] <= 0.5f) {
                 PlaceBlockAt(id, currentPos.x, currentPos.y, currentPos.z);
                 return true;
             } else {
@@ -285,57 +268,57 @@ bool TryPlaceBlock(uint3 id, float3 currentPos) {
 // Diffuses pheromone from neighbouring cells. If there is a block in the neighbouring cell, the diffusion value is instead sent back. Edges of the grid are considered to be empty of pheromone.
 float CalcDiffusionFromNeighbours(float3 pos) {
     float sum = 0.0;
-    float value = _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z))].w;
+    float value = _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z))];
     float alpha = 1.0 / 7.0;
 
     if (pos.x > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w);
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))]);
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))];
         }
     } else {
         sum += -alpha * value;
     }
     if (pos.x < (float) _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w);
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))]);
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))];
         }
     } else {
         sum += -alpha * value;
     }
     if (pos.y > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w);            
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))]);            
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))];
         }
     } // Note there is no else as the floor is considered to be made of blocks.
     if (pos.y < (float) _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w);
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))]);
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))];
         }
     } else {
         sum += -alpha * value;
     }
     if (pos.z > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w);
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))]);
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))];
         }
     } else {
         sum += -alpha * value;
     }
     if (pos.z < (float) _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w == 0) {
-            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w);
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))]);
         } else {
-            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].w;
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))];
         }
     } else {
         sum += -alpha * value;
@@ -348,8 +331,8 @@ void DecayPheromoneValues(uint3 id) {
     for (uint x = 0; x < _IndexStep; x++) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
-                if (_PheromoneValues[GetIndexLocal(id, x, y, z)].w > 0)
-                _PheromoneValues[GetIndexLocal(id, x, y, z)].w *= 0.9;
+                if (_PheromoneValues[GetIndexLocal(id, x, y, z)] > 0)
+                _PheromoneValues[GetIndexLocal(id, x, y, z)] *= 0.9;
             }
         }
     }
@@ -362,7 +345,7 @@ void AgentStepThroughTime(uint3 id) {
     for (uint x = 0; x < _IndexStep; x++) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
-                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)].w; i++) {
+                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)]; i++) {
                     positions[counter] = TryMakeMove(id, float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z), i);
                     counter++;
                 }
@@ -381,9 +364,9 @@ void PheromoneStepThroughTime(uint3 id) {
     for (uint x = 0; x < _IndexStep; x++) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
-                if (_PastCellValues[GetIndexLocal(id, x, y, z)].w == 0) {
-                    _PheromoneValues[GetIndexLocal(id, x, y, z)].w += CalcDiffusionFromNeighbours(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].w < 0.01f) _PheromoneValues[GetIndexLocal(id, x, y, z)].w = 0;
+                if (_PastCellValues[GetIndexLocal(id, x, y, z)] == 0) {
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)] += CalcDiffusionFromNeighbours(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)] < 0.01f) _PheromoneValues[GetIndexLocal(id, x, y, z)] = 0;
                 }
             }
         }
@@ -395,38 +378,52 @@ void FunctionKernel(uint3 id: SV_DispatchThreadID) {
 
 	//FillEntireGridDebugFunction(id);
 
-    AgentStepThroughTime(id);
+    //if (id.x == 0 && id.y == 0 && id.z == 0) _AgentValues[0] = 1;
 
-    PheromoneStepThroughTime(id);
+    /*for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                _AgentValues[GetIndexLocal(id, x, y, z)] = 1;
+            }
+        }
+    }*/
+
+   if (_Counter > 200) {
+        AgentStepThroughTime(id);
+    }
+    
+    if ((float) _Counter % 5.0 == 0 || _Counter <= 200) {
+        PheromoneStepThroughTime(id);
+    }
 
     if (id.x == 0 && id.y == 0 && id.z == 0) {
-        _PheromoneValues[GetIndexGlobal(float3(27, 0, 27))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(28, 0, 28))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(29, 0, 29))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(30, 0, 30))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(31, 0, 31))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(32, 0, 32))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(33, 0, 33))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(27, 0, 26))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(28, 0, 27))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(29, 0, 28))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(30, 0, 29))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(31, 0, 30))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(32, 0, 31))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(33, 0, 32))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(26, 0, 27))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(27, 0, 28))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(28, 0, 29))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(29, 0, 30))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(30, 0, 31))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(31, 0, 32))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(32, 0, 33))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(27, 1, 27))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(28, 1, 28))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(29, 1, 29))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(30, 1, 30))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(31, 1, 31))].w = 400;
-        _PheromoneValues[GetIndexGlobal(float3(32, 1, 32))].w = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 27))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 28))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 29))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 30))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 31))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 32))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(33, 0, 33))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 26))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 27))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 28))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 29))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 30))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 31))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(33, 0, 32))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(26, 0, 27))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 0, 28))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 0, 29))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 0, 30))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 0, 31))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 0, 32))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 0, 33))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(27, 1, 27))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(28, 1, 28))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(29, 1, 29))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(30, 1, 30))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(31, 1, 31))] = 400;
+        _PheromoneValues[GetIndexGlobal(float3(32, 1, 32))] = 400;
     }
 
     

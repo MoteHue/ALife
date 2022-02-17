@@ -29,21 +29,22 @@ Shader "Custom/OpaqueSurfaceShader"
         fixed4 _Color;
 
         float _Step;
+        int _Resolution;
 
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                StructuredBuffer<float4> _Positions;
+                StructuredBuffer<float> _Values;
         #endif
 
         void ConfigureProcedural() {
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                float4 position = _Positions[unity_InstanceID];
+                float value = _Values[unity_InstanceID];
 
-                if (position.w <= 0) {
+                if (value <= 0) {
                     unity_ObjectToWorld = 0.0;
                 }
                 else {
                     unity_ObjectToWorld = 0.0;
-                    unity_ObjectToWorld._m03_m13_m23_m33 = float4(position.x, position.y, position.z, 1.0);
+                    unity_ObjectToWorld._m03_m13_m23_m33 = float4(unity_InstanceID % _Resolution, (unity_InstanceID / _Resolution) % _Resolution, (unity_InstanceID / (_Resolution * _Resolution)) % _Resolution, 1.0);
                     unity_ObjectToWorld._m00_m11_m22 = _Step;
                 }
             #endif
