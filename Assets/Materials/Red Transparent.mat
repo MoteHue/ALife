@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Transparent Red
-  m_Shader: {fileID: 4800000, guid: 3f7934798a95c2740bce881710bcc6a9, type: 3}
+  m_Name: Red Transparent
+  m_Shader: {fileID: 4800000, guid: cf374d4742ba7994baf03b6f3bb5d770, type: 3}
   m_ShaderKeywords: _ALPHAPREMULTIPLY_ON _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1

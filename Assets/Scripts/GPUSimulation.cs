@@ -21,7 +21,9 @@ public class GPUSimulation : MonoBehaviour {
 	Mesh cellMesh;
 
 	[SerializeField]
-	Material pheromoneMaterial;
+	Material queenPheromoneMaterial;
+	[SerializeField]
+	Material cementPheromoneMaterial;
 	[SerializeField]
 	Mesh pheromoneMesh;
 
@@ -72,10 +74,10 @@ public class GPUSimulation : MonoBehaviour {
 
 		agentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
 		cellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 2);
 		pastAgentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
 		pastCellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
+		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 2);
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
@@ -101,7 +103,8 @@ public class GPUSimulation : MonoBehaviour {
 
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);
-		pheromoneMaterial.SetInt(resolutionId, resolution);
+		queenPheromoneMaterial.SetInt(resolutionId, resolution);
+		cementPheromoneMaterial.SetInt(resolutionId, resolution);
 	}
 
 	void OnDisable() {
@@ -142,9 +145,11 @@ public class GPUSimulation : MonoBehaviour {
 		agentValuesBuffer.GetData(values);
 		pastAgentValuesBuffer.SetData(values);
 
+		values = new float[maxResolution * maxResolution * maxResolution];
 		cellValuesBuffer.GetData(values);
 		pastCellValuesBuffer.SetData(values);
 
+		values = new float[maxResolution * maxResolution * maxResolution * 2];
 		pheromoneValuesBuffer.GetData(values);
 		pastPheromoneValuesBuffer.SetData(values);
 
@@ -161,9 +166,13 @@ public class GPUSimulation : MonoBehaviour {
 		}
 		
 		if (pheromonesEnabled) {
-			pheromoneMaterial.SetFloat(stepId, step);
-			pheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
-			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, pheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+			queenPheromoneMaterial.SetFloat(stepId, step);
+			queenPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, queenPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+			cementPheromoneMaterial.SetFloat(stepId, step);
+			cementPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, cementPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
 		}
 		
 	}

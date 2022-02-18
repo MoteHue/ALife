@@ -1,4 +1,4 @@
-Shader "Custom/TransparentSurfaceShader"
+Shader "Custom/CementSurfaceShader"
 {
     Properties
     {
@@ -35,12 +35,12 @@ Shader "Custom/TransparentSurfaceShader"
         float alpha;
 
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                StructuredBuffer<float> _Values;
+                StructuredBuffer<float2> _Values;
         #endif
 
         void ConfigureProcedural() {
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                float value = _Values[unity_InstanceID];
+                float value = _Values[unity_InstanceID].y;
 
                 if (value <= 0) {
                     unity_ObjectToWorld = 0.0;
