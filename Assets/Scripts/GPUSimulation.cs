@@ -27,10 +27,7 @@ public class GPUSimulation : MonoBehaviour {
 	[SerializeField]
 	Mesh pheromoneMesh;
 
-	const int maxResolution = 64;
-
-	[SerializeField, Range(10, maxResolution)]
-	int resolution = 20;
+	const int resolution = 60;
 
 	ComputeBuffer
 		agentValuesBuffer,
@@ -41,7 +38,6 @@ public class GPUSimulation : MonoBehaviour {
 		pastCellValuesBuffer,
 		pastPheromoneValuesBuffer;
 
-	int counter = 0;
 	float step = 1f;
 	int indexStep = 0;
 	Bounds bounds;
@@ -51,6 +47,8 @@ public class GPUSimulation : MonoBehaviour {
 	bool agentsEnabled = true;
 
 	List<Vector3> spawnLocations;
+
+	List<Vector3Int> queenCells;
 
 	static readonly int
 		materialValuesId = Shader.PropertyToID("_Values"),
@@ -69,15 +67,23 @@ public class GPUSimulation : MonoBehaviour {
 		counterId = Shader.PropertyToID("_Counter");
 
     private void Start() {
+		queenCells = new List<Vector3Int>();
+		for (int i = 27; i <= 33; i++) {
+			queenCells.Add(new Vector3Int(i, 0, i));
+			queenCells.Add(new Vector3Int(i, 0, i - 1));
+			queenCells.Add(new Vector3Int(i - 1, 0, i));
+			if (i != 33) queenCells.Add(new Vector3Int(i, 1, i));
+		}
+
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
 
-		agentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		cellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		pheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 2);
-		pastAgentValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		pastCellValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float));
-		pastPheromoneValuesBuffer = new ComputeBuffer(maxResolution * maxResolution * maxResolution, sizeof(float) * 2);
+		agentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		cellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		pheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
+		pastAgentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		pastCellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		pastPheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
@@ -99,12 +105,24 @@ public class GPUSimulation : MonoBehaviour {
 		computeShader.SetInt(resolutionId, resolution);
 		computeShader.SetInt(indexStepId, indexStep);
 		computeShader.SetBool(meshEnabledId, pheromonesEnabled);
-		computeShader.SetInt(counterId, counter);
+		computeShader.SetInt(counterId, 0);
 
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);
 		queenPheromoneMaterial.SetInt(resolutionId, resolution);
 		cementPheromoneMaterial.SetInt(resolutionId, resolution);
+
+		SetQueenCells();
+	}
+
+	void SetQueenCells() {
+		float[] values = new float[resolution * resolution * resolution];
+		cellValuesBuffer.GetData(values);
+		foreach (Vector3Int queenCell in queenCells) {
+			values[queenCell.x + queenCell.y * resolution + queenCell.z * resolution * resolution] = 2;
+        }
+		cellValuesBuffer.SetData(values);
+		pastCellValuesBuffer.SetData(values);
 	}
 
 	void OnDisable() {
@@ -126,8 +144,7 @@ public class GPUSimulation : MonoBehaviour {
 
 	void Update() {
 		UpdateFunctionOnGPU();
-		counter++;
-		if (counter == 200) {
+		if (Time.frameCount == 200) {
 			List<float> values = SpawnAgents(300);
 			agentValuesBuffer.SetData(values);
 			pastAgentValuesBuffer.SetData(values);
@@ -137,19 +154,19 @@ public class GPUSimulation : MonoBehaviour {
 	void UpdateFunctionOnGPU() {
 		
 		computeShader.SetFloat(timeId, Time.time);
-		computeShader.SetInt(counterId, counter);
+		computeShader.SetInt(counterId, Time.frameCount);
 
 		computeShader.Dispatch(0, 2, 2, 2);
 
-		float[] values = new float[maxResolution * maxResolution * maxResolution];
+		float[] values = new float[resolution * resolution * resolution];
 		agentValuesBuffer.GetData(values);
 		pastAgentValuesBuffer.SetData(values);
 
-		values = new float[maxResolution * maxResolution * maxResolution];
+		values = new float[resolution * resolution * resolution];
 		cellValuesBuffer.GetData(values);
 		pastCellValuesBuffer.SetData(values);
 
-		values = new float[maxResolution * maxResolution * maxResolution * 2];
+		values = new float[resolution * resolution * resolution * 2];
 		pheromoneValuesBuffer.GetData(values);
 		pastPheromoneValuesBuffer.SetData(values);
 
