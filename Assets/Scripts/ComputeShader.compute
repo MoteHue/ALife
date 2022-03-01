@@ -516,9 +516,9 @@ void PheromoneStepThroughTime(uint3 id) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PastCellValues[GetIndexLocal(id, x, y, z)] == 0) {
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].x += CalcDiffusionFromNeighboursQueen(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x < 0.01f) _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 0;
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x < 0.005f) _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 0;
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].y += CalcDiffusionFromNeighboursCement(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.01f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.005f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
                 }
             }
         }
