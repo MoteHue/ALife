@@ -172,7 +172,27 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
         }
 
         if (cementSum == 0) {
-            move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+            float3 movesTowardsCentre[26];
+            uint counter2 = 0;
+            for (uint i = 0; i < counter; i++) {
+                if ((currentPos.x < 30 && possibleMoves[i].x == 1)
+                    || (currentPos.x > 30 && possibleMoves[i].x == -1)
+                    || (currentPos.z < 30 && possibleMoves[i].z == 1)
+                    || (currentPos.z > 30 && possibleMoves[i].z == -1)) {
+                    movesTowardsCentre[counter2] = possibleMoves[i];
+                    counter2++;
+                }
+            }
+            if (counter2 > 0) {
+                float centreChance = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + currentPos.x + currentPos.y + currentPos.z);
+                if (centreChance < 25.0) {
+                    move = movesTowardsCentre[RandInt(0, counter2, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+                } else {
+                    move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+                }
+            } else {
+                move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+            }
         }
         else {
             float proportions[26];
@@ -516,9 +536,9 @@ void PheromoneStepThroughTime(uint3 id) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PastCellValues[GetIndexLocal(id, x, y, z)] == 0) {
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].x += CalcDiffusionFromNeighboursQueen(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x < 0.005f) _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 0;
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 0;
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].y += CalcDiffusionFromNeighboursCement(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.005f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
                 }
             }
         }

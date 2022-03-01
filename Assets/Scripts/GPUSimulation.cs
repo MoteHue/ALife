@@ -40,7 +40,10 @@ public class GPUSimulation : MonoBehaviour {
 
 	float step = 1f;
 	int indexStep = 0;
+	int count = 0;
 	Bounds bounds;
+
+	public bool simulationRunning = false;
 
 	bool pheromonesEnabled = true;
 	bool cellsEnabled = true;
@@ -68,12 +71,20 @@ public class GPUSimulation : MonoBehaviour {
 
     private void Start() {
 		queenCells = new List<Vector3Int>();
-		for (int i = 27; i <= 33; i++) {
+		/*for (int i = 27; i <= 33; i++) {
 			queenCells.Add(new Vector3Int(i, 0, i));
 			queenCells.Add(new Vector3Int(i, 0, i - 1));
 			queenCells.Add(new Vector3Int(i - 1, 0, i));
 			if (i != 33) queenCells.Add(new Vector3Int(i, 1, i));
+		}*/
+		for (int x = 29; x <= 31; x++) {
+			for (int y = 0; y <= 2; y++) {
+				for (int z = 29; z <= 31; z++) {
+					queenCells.Add(new Vector3Int(x, y, z));
+                }
+            }
 		}
+
 
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
@@ -144,7 +155,7 @@ public class GPUSimulation : MonoBehaviour {
 
 	void Update() {
 		UpdateFunctionOnGPU();
-		if (Time.frameCount == 200) {
+		if (count == 200) {
 			List<float> values = SpawnAgents(300);
 			agentValuesBuffer.SetData(values);
 			pastAgentValuesBuffer.SetData(values);
@@ -153,22 +164,25 @@ public class GPUSimulation : MonoBehaviour {
 
 	void UpdateFunctionOnGPU() {
 		
-		computeShader.SetFloat(timeId, Time.time);
-		computeShader.SetInt(counterId, Time.frameCount);
+		if (simulationRunning) {
+			computeShader.SetFloat(timeId, Time.time);
+			computeShader.SetInt(counterId, count);
 
-		computeShader.Dispatch(0, 2, 2, 2);
+			computeShader.Dispatch(0, 2, 2, 2);
 
-		float[] values = new float[resolution * resolution * resolution];
-		agentValuesBuffer.GetData(values);
-		pastAgentValuesBuffer.SetData(values);
+			float[] values = new float[resolution * resolution * resolution];
+			agentValuesBuffer.GetData(values);
+			pastAgentValuesBuffer.SetData(values);
 
-		values = new float[resolution * resolution * resolution];
-		cellValuesBuffer.GetData(values);
-		pastCellValuesBuffer.SetData(values);
+			values = new float[resolution * resolution * resolution];
+			cellValuesBuffer.GetData(values);
+			pastCellValuesBuffer.SetData(values);
 
-		values = new float[resolution * resolution * resolution * 2];
-		pheromoneValuesBuffer.GetData(values);
-		pastPheromoneValuesBuffer.SetData(values);
+			values = new float[resolution * resolution * resolution * 2];
+			pheromoneValuesBuffer.GetData(values);
+			pastPheromoneValuesBuffer.SetData(values);
+			count++;
+		}
 
 		if (agentsEnabled) {
 			agentMaterial.SetFloat(stepId, step);
