@@ -67,7 +67,9 @@ public class GPUSimulation : MonoBehaviour {
 		indexStepId = Shader.PropertyToID("_IndexStep"),
 		spawnLocationsId = Shader.PropertyToID("_SpawnLocations"),
 		meshEnabledId = Shader.PropertyToID("_Enabled"),
-		counterId = Shader.PropertyToID("_Counter");
+		counterId = Shader.PropertyToID("_Counter"),
+		rangeMinId = Shader.PropertyToID("_RangeMin"),
+		rangeMaxId = Shader.PropertyToID("_RangeMax");
 
     private void Start() {
 		queenCells = new List<Vector3Int>();
@@ -117,6 +119,9 @@ public class GPUSimulation : MonoBehaviour {
 		computeShader.SetInt(indexStepId, indexStep);
 		computeShader.SetBool(meshEnabledId, pheromonesEnabled);
 		computeShader.SetInt(counterId, 0);
+
+		computeShader.SetFloat(rangeMinId, 0.1f);
+		computeShader.SetFloat(rangeMaxId, 0.5f);
 
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);

@@ -4,6 +4,8 @@ uint _Resolution;
 uint _IndexStep;
 float _Time;
 uint _Counter;
+float _RangeMin;
+float _RangeMax;
 
 // Buffers used for calculations.
 RWStructuredBuffer<float> _AgentValues;
@@ -185,7 +187,7 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
             }
             if (counter2 > 0) {
                 float centreChance = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + currentPos.x + currentPos.y + currentPos.z);
-                if (centreChance < 25.0) {
+                if (centreChance < 20.0) {
                     move = movesTowardsCentre[RandInt(0, counter2, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
                 } else {
                     move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
@@ -313,7 +315,7 @@ bool Rule3(int x, int y, int z) {
 }
 
 bool CorrectPheromoneLevels(float3 currentPos) {
-    if ((_PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].x >= 0.1f && _PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].x <= 0.5f)) {
+    if ((_PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].x >= _RangeMin && _PastPheromoneValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z))].x <= _RangeMax)) {
         return true;
     }
     else {
