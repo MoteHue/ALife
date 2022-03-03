@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GPUSimulation : MonoBehaviour {
 
@@ -27,6 +28,12 @@ public class GPUSimulation : MonoBehaviour {
 	[SerializeField]
 	Mesh pheromoneMesh;
 
+	[SerializeField]
+	Text genPopText;
+
+	[SerializeField]
+	Image progressImage;
+
 	const int resolution = 60;
 
 	ComputeBuffer
@@ -43,7 +50,21 @@ public class GPUSimulation : MonoBehaviour {
 	int count = 0;
 	Bounds bounds;
 
-	public bool simulationRunning = false;
+	float rangeMin;
+	float rangeMax;
+
+	int popSize = 30;
+	int noOfGenerations = 100;
+
+	List<List<float>> genomes;
+
+	List<List<(List<float>, float)>> results;
+
+	int popCounter = 0;
+	int genCounter = 0;
+	List<(List<float>, float)> result;
+
+	public bool simulationRunning = true;
 
 	bool pheromonesEnabled = true;
 	bool cellsEnabled = true;
@@ -72,6 +93,10 @@ public class GPUSimulation : MonoBehaviour {
 		rangeMaxId = Shader.PropertyToID("_RangeMax");
 
     private void Start() {
+		genomes = new List<List<float>>();
+		results = new List<List<(List<float>, float)>>();
+		result = new List<(List<float>, float)>();
+
 		queenCells = new List<Vector3Int>();
 		/*for (int i = 27; i <= 33; i++) {
 			queenCells.Add(new Vector3Int(i, 0, i));
@@ -120,15 +145,14 @@ public class GPUSimulation : MonoBehaviour {
 		computeShader.SetBool(meshEnabledId, pheromonesEnabled);
 		computeShader.SetInt(counterId, 0);
 
-		computeShader.SetFloat(rangeMinId, 0.1f);
-		computeShader.SetFloat(rangeMaxId, 0.5f);
-
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);
 		queenPheromoneMaterial.SetInt(resolutionId, resolution);
 		cementPheromoneMaterial.SetInt(resolutionId, resolution);
 
 		SetQueenCells();
+
+		SetRandomGenomes();
 	}
 
 	void SetQueenCells() {
@@ -139,6 +163,37 @@ public class GPUSimulation : MonoBehaviour {
         }
 		cellValuesBuffer.SetData(values);
 		pastCellValuesBuffer.SetData(values);
+	}
+
+	void SetRandomGenomes() {
+		for (int i = 0; i < popSize; i++) {
+			float minRange = Random.Range(0f, 1f);
+			float maxRange = Random.Range(0f, 1f);
+			List<float> genome = new List<float> { minRange, maxRange };
+			genomes.Add(genome);
+        }
+		string output = $"gen 0 setup\n";
+		for (int i = 0; i < popSize; i++) {
+			output += $"genome {i}: [{genomes[i][0]}, {genomes[i][1]}]\n";
+		}
+		Debug.Log(output);
+	}
+
+	float Gaussian(float mu, float sigma) {
+		float u1 = Random.Range(0f, 1f);
+		float u2 = Random.Range(0f, 1f);
+
+		float rand_std_normal = Mathf.Sqrt(-2.0f * Mathf.Log(u1)) *Mathf.Sin(2.0f * Mathf.PI * u2);
+
+		return mu + sigma * rand_std_normal;
+	}
+
+	List<float> MutateGenome(List<float> genome) {
+		List<float> returnList = new List<float>();
+		float minRange = Mathf.Clamp(Gaussian(genome[0], 0.05f), 0f, 1f);
+		float maxRange = Mathf.Clamp(Gaussian(genome[1], 0.05f), 0f, 1f);
+
+		return new List<float> { minRange, maxRange };
 	}
 
 	void OnDisable() {
@@ -158,20 +213,122 @@ public class GPUSimulation : MonoBehaviour {
 		spawnLocationsBuffer = null;
 	}
 
+	void ClearBuffers() {
+		float[] values = new float[resolution * resolution * resolution];
+		agentValuesBuffer.SetData(values);
+		pastAgentValuesBuffer.SetData(values);
+
+		values = new float[resolution * resolution * resolution];
+		cellValuesBuffer.SetData(values);
+		pastCellValuesBuffer.SetData(values);
+
+		values = new float[resolution * resolution * resolution * 2];
+		pheromoneValuesBuffer.SetData(values);
+		pastPheromoneValuesBuffer.SetData(values);
+
+		SetQueenCells();
+	}
+
 	void Update() {
-		UpdateFunctionOnGPU();
+		if (genCounter < noOfGenerations) {
+			if (popCounter < popSize) {
+				if (count == 0) {
+					rangeMin = Mathf.Max(0.001f, genomes[popCounter][0] * 0.5f);
+					rangeMax = 0.5f + genomes[popCounter][1];
+				}
+				if (count % 10 == 0) {
+					progressImage.transform.localScale = new Vector3(count / 1000f, 1f, 1f);
+                }
+				bool finished = DoSimulation(1000);
+				if (finished) {
+					float fitness = CalcDomeFitness(new Vector3(30, 0, 30), 10f);
+					result.Add((genomes[popCounter], fitness));
+					popCounter++;
+					ClearBuffers();
+					count = 0;
+					genPopText.text = $"Gen: {genCounter} Pop: {popCounter}";
+				}
+			} else {
+				results.Add(result);
+				popCounter = 0;
+				(List<float>, float) bestResult = result[0];
+				for (int i = 1; i < popSize; i++) {
+					if (results[genCounter][i].Item2 > bestResult.Item2) {
+						bestResult = result[i];
+                    }
+                }
+				genomes[0] = bestResult.Item1;
+				for (int i = 1; i < popSize; i++) {
+					genomes[i] = MutateGenome(bestResult.Item1);
+                }
+				Debug.Log($"BEST: gen: {genCounter}, bestmin: {bestResult.Item1[0]}, bestmax: {bestResult.Item1[1]}, fitness: {bestResult.Item2}");
+				string output = $"gen {genCounter} results\n";
+				for (int i = 0; i < popSize; i++) {
+					output += $"genome {i}: [{result[i].Item1[0]}, {result[i].Item1[1]}], fitness: {result[i].Item2}\n";
+				}
+				Debug.Log(output);
+				result = new List<(List<float>, float)>();
+				genCounter++;
+				output = $"gen {genCounter} setup\n";
+				for (int i = 0; i < popSize; i++) {
+					output += $"genome {i}: [{genomes[i][0]}, {genomes[i][1]}]\n";
+                }
+				Debug.Log(output);
+				genPopText.text = $"Gen: {genCounter} Pop: {popCounter}";
+			}
+		}
+		
+		
+		ShowMesh();
+	}
+
+    bool DoSimulation(int frameCount) {
 		if (count == 200) {
 			List<float> values = SpawnAgents(300);
 			agentValuesBuffer.SetData(values);
 			pastAgentValuesBuffer.SetData(values);
 		}
+
+		if (count < frameCount) {
+			DispatchCycleOfSimulation();
+			return false;
+        } else {
+			return true;
+        }
+    }
+
+	void ShowMesh() {
+		if (agentsEnabled) {
+			agentMaterial.SetFloat(stepId, step);
+			agentMaterial.SetBuffer(materialValuesId, agentValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
+
+		if (cellsEnabled) {
+			cellMaterial.SetFloat(stepId, step);
+			cellMaterial.SetBuffer(materialValuesId, cellValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(cellMesh, 0, cellMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
+
+		if (pheromonesEnabled) {
+			queenPheromoneMaterial.SetFloat(stepId, step);
+			queenPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, queenPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+			cementPheromoneMaterial.SetFloat(stepId, step);
+			cementPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, cementPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+		}
 	}
 
-	void UpdateFunctionOnGPU() {
+    void DispatchCycleOfSimulation() {
 		
 		if (simulationRunning) {
 			computeShader.SetFloat(timeId, Time.time);
 			computeShader.SetInt(counterId, count);
+
+			computeShader.SetFloat(rangeMinId, rangeMin);
+			computeShader.SetFloat(rangeMaxId, rangeMax);
 
 			computeShader.Dispatch(0, 2, 2, 2);
 
@@ -188,29 +345,6 @@ public class GPUSimulation : MonoBehaviour {
 			pastPheromoneValuesBuffer.SetData(values);
 			count++;
 		}
-
-		if (agentsEnabled) {
-			agentMaterial.SetFloat(stepId, step);
-			agentMaterial.SetBuffer(materialValuesId, agentValuesBuffer);
-			Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-		}
-		
-		if (cellsEnabled) {
-			cellMaterial.SetFloat(stepId, step);
-			cellMaterial.SetBuffer(materialValuesId, cellValuesBuffer);
-			Graphics.DrawMeshInstancedProcedural(cellMesh, 0, cellMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-		}
-		
-		if (pheromonesEnabled) {
-			queenPheromoneMaterial.SetFloat(stepId, step);
-			queenPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
-			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, queenPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-
-			cementPheromoneMaterial.SetFloat(stepId, step);
-			cementPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
-			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, cementPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
-		}
-		
 	}
 
 	void GenerateSpawnLocations() {
@@ -257,6 +391,42 @@ public class GPUSimulation : MonoBehaviour {
 
 	public void ToggleAgents() {
 		agentsEnabled = !agentsEnabled;
+	}
+
+	float CalcDomeFitness(Vector3 domeCentre, float targetRadius) {
+		float[] values = new float[resolution * resolution * resolution];
+		cellValuesBuffer.GetData(values);
+
+		float sum = 0;
+		int count = 0;
+
+		for (int i = 0; i < values.Length; i++) {
+			if (values[i] == 1) {
+				Vector3 coords = new Vector3(i % resolution, (i / resolution) % resolution, (i / (resolution * resolution)) % resolution);
+				float distance = Vector3.Distance(coords, domeCentre);
+				float difference = Mathf.Abs(distance - targetRadius);
+				
+				if (difference <= 0.5f) {
+					sum += 1f;
+                } else if (difference <= 1.5f) {
+					sum += 0.75f;
+				} else if (difference <= 2.5f) {
+					sum += 0.25f;
+				} else if (difference <= 3.5f) {
+					sum += 0f;
+				} else if (difference <= 4.5f) {
+					sum += -0.25f;
+				} else if (difference <= 5.5f) {
+					sum += -0.75f;
+				} else {
+					sum += -1f;
+				}
+
+				count++;
+			}
+		}
+
+		return (sum / count) * 100f;
 	}
 
 }	
