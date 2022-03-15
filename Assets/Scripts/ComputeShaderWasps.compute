@@ -4,6 +4,7 @@ uint _Resolution;
 uint _IndexStep;
 float _Time;
 uint _Counter;
+uint _MicroruleCount;
 
 // Buffers used for calculations.
 RWStructuredBuffer<float> _AgentValues;
@@ -11,6 +12,7 @@ RWStructuredBuffer<float> _CellValues;
 RWStructuredBuffer<float> _PastAgentValues;
 RWStructuredBuffer<float> _PastCellValues;
 StructuredBuffer<float3> _SpawnLocations;
+RWStructuredBuffer<float> _Microrules;
 
 uint GetIndexLocal(uint3 id, uint x, uint y, uint z) {
 	return (id.x * _IndexStep + x) + (id.y * _IndexStep + y) * _Resolution + (id.z * _IndexStep + z) * _Resolution * _Resolution;
@@ -54,80 +56,22 @@ float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
 	return newPos;
 }
 
-bool CheckNoObstructions(float3 currentPos, float3 move) {
-    int axisCount = 0;
-    if (move.x != 0) axisCount++;
-    if (move.y != 0) axisCount++;
-    if (move.z != 0) axisCount++;
-
-    if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y + move.y, currentPos.z + move.z))] == 0) {
-        if (axisCount == 3) { // Check for movement through wall diagonals
-            if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
-                return true;
-            } else {
-                return false;
+bool CheckNeighbouringSurface(float3 pos) {
+    for (int x = -1; x <= 1; x++) {
+        if (pos.x + x >= 0 && pos.x + x < (float)_Resolution) {
+            for (int y = -1; y <= 1; y++) {
+                if (pos.y + y >= 0 && pos.y + y < (float)_Resolution) {
+                    for (int z = -1; z <= 1; z++) {
+                        if (pos.z + z >= 0 && pos.z + z < (float)_Resolution) {
+                            if ((x != 0 || y != 0 || z != 0)) {
+                                if (_PastCellValues[GetIndexGlobal(float3(pos.x + x, pos.y + y, pos.z + z))] != 0) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        } else if (axisCount == 2) {
-            if (move.x != 0 && move.y != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else if (move.x != 0 && move.z != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + move.x, currentPos.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else if (move.y != 0 && move.z != 0) {
-                if (_PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y + move.y, currentPos.z))] == 0 || _PastCellValues[GetIndexGlobal(float3(currentPos.x, currentPos.y, currentPos.z + move.z))] == 0) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        } else {
-            return true;
-        }
-    } else {
-        return false;
-    }
-}
-
-bool CheckNeighbouringSurface(uint x, uint y, uint z) {
-    if (y == 0) return true;
-
-    if (x != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0) {
-            return true;
-        }
-    }
-    if (y != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))] != 0) {
-            return true;
-        }
-    }
-    if (z != 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0) {
-            return true;
-        }
-    }
-    if (x != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0) {
-            return true;
-        }
-    }
-    if (y != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))] != 0) {
-            return true;
-        }
-    }
-    if (z != _Resolution - 1) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0) {
-            return true;
         }
     }
     return false;
@@ -139,37 +83,30 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
     uint counter = 0;
 
     for (int x = -1; x <= 1; x++) {    
-        //if (pos.x + x >= 0 && pos.x + x < gridUI.width) {
-        for (int y = -1; y <= 1; y++) {
-            if (currentPos.y + y >= 0 && currentPos.y + y < (float)_Resolution) { // Can't move out of grid vertically
-                for (int z = -1; z <= 1; z++) {
-                    //if (pos.z + z >= 0 && pos.z + z < gridUI.depth) {
-                    if ((x != 0 || y != 0 || z != 0)) {
-                        if (currentPos.x + x < 0 || currentPos.x + x >= (float)_Resolution || currentPos.z + z < 0 || currentPos.z + z >= (float)_Resolution) { // Moving out of grid
-                            possibleMoves[counter] = float3(x, y, z);
-                            counter++;
-                        } else if (CheckNoObstructions(currentPos, float3(x, y, z)) && CheckNeighbouringSurface(currentPos.x + x, currentPos.y + y, currentPos.z + z)) { // Moving within grid
-                            possibleMoves[counter] = float3 (x, y, z);
-                            counter++;
+        if (currentPos.x + x >= 0 && currentPos.x + x < (float)_Resolution) {
+            for (int y = -1; y <= 1; y++) {
+                if (currentPos.y + y >= 0 && currentPos.y + y < (float)_Resolution) {
+                    for (int z = -1; z <= 1; z++) {
+                        if (currentPos.z + z >= 0 && currentPos.z + z < (float)_Resolution) {
+                            if ((x != 0 || y != 0 || z != 0)) {
+                                if (CheckNeighbouringSurface(float3(currentPos.x + x, currentPos.y + y, currentPos.z + z))) {
+                                    if (_PastCellValues[GetIndexGlobal(float3(currentPos.x + x, currentPos.y + y, currentPos.z + z))] == 0) {
+                                        possibleMoves[counter] = float3(x, y, z);
+                                        counter++;
+                                    }
+                                }
+                            }
                         }
                     }
-                    //}
                 }
             }
         }
-        //}
     }
 
     if (counter != 0) {
         float3 move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
-
-        if (currentPos.x + move.x < 0 || currentPos.x + move.x >= (float)_Resolution || currentPos.z + move.z < 0 || currentPos.z + move.z >= (float)_Resolution) { // Moving out of grid
-            float3 newPos = CompleteLifeCycle(id, currentPos);
-            return newPos;
-        } else { // Moving within grid
-            MakeMove(currentPos, currentPos + move);
-            return currentPos + move;
-        }
+        MakeMove(currentPos, currentPos + move);
+        return currentPos + move;
     } else {
         float3 newPos = CompleteLifeCycle(id, currentPos);
         return newPos;
@@ -177,90 +114,106 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
 
 }
 
-void PlaceBlockAt(uint3 id, int x, int y, int z) {
-    _CellValues[GetIndexGlobal(float3(x, y, z))] = 1;
-    CompleteLifeCycle(id, float3(x, y, z));
+void PlaceBlockAt(uint3 id, int x, int y, int z, int cellType) {
+    _CellValues[GetIndexGlobal(float3(x, y, z))] = cellType;
+    //CompleteLifeCycle(id, float3(x, y, z));
 }
 
-// 1. Either the location immediately underneath or immediately above the site must contain material.
-// The floor, represented by y == -1, counts as material.
-bool Rule1(int x, int y, int z) {
-    if (y == 0) {
-        return true;
-    }
-    if (y > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y - 1, z))] != 0) {
-            return true;
+// Return the cell type if the microrule passes, or 0 if it doesn't.
+int CheckMicrorule(int index, float3 pos, int rotation) {
+    int counter = 0;
+    float values[26];
+
+    if (rotation == 0) {
+        for (int y = -1; y <= 1; y++) {
+            for (int z = -1; z <= 1; z++) {
+                for (int x = -1; x <= 1; x++) {
+                    if (x != 0 || y != 0 || z != 0) {
+                        if (pos.x + x >= 0 && pos.x + x < (float)_Resolution && pos.y + y >= 0 && pos.y + y < (float)_Resolution && pos.z + z >= 0 && pos.z + z < (float)_Resolution) {
+                            values[counter] = _PastCellValues[GetIndexGlobal(float3(pos.x + x, pos.y + y, pos.z + z))];
+                        } else {
+                            values[counter] = 0;
+                        }
+                        counter++;
+                    }
+                }
+            }
+        }
+    } else if (rotation == 1) {
+        for (int y = -1; y <= 1; y++) {
+            for (int x = 1; x >= -1; x--) {
+                for (int z = -1; z <= 1; z++) {
+                    if (x != 0 || y != 0 || z != 0) {
+                        if (pos.x + x >= 0 && pos.x + x < (float)_Resolution && pos.y + y >= 0 && pos.y + y < (float)_Resolution && pos.z + z >= 0 && pos.z + z < (float)_Resolution) {
+                            values[counter] = _PastCellValues[GetIndexGlobal(float3(pos.x + x, pos.y + y, pos.z + z))];
+                        } else {
+                            values[counter] = 0;
+                        }
+                        counter++;
+                    }
+                }
+            }
+        }
+    } else if (rotation == 2) {
+        for (int y = -1; y <= 1; y++) {
+            for (int z = 1; z >= -1; z--) {
+                for (int x = 1; x >= -1; x--) {
+                    if (x != 0 || y != 0 || z != 0) {
+                        if (pos.x + x >= 0 && pos.x + x < (float)_Resolution && pos.y + y >= 0 && pos.y + y < (float)_Resolution && pos.z + z >= 0 && pos.z + z < (float)_Resolution) {
+                            values[counter] = _PastCellValues[GetIndexGlobal(float3(pos.x + x, pos.y + y, pos.z + z))];
+                        } else {
+                            values[counter] = 0;
+                        }
+                        counter++;
+                    }
+                }
+            }
+        }
+    } else if (rotation == 3) {
+        for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+                for (int z = 1; z >= -1; z--) {
+                    if (x != 0 || y != 0 || z != 0) {
+                        if (pos.x + x >= 0 && pos.x + x < (float)_Resolution && pos.y + y >= 0 && pos.y + y < (float)_Resolution && pos.z + z >= 0 && pos.z + z < (float)_Resolution) {
+                            values[counter] = _PastCellValues[GetIndexGlobal(float3(pos.x + x, pos.y + y, pos.z + z))];
+                        } else {
+                            values[counter] = 0;
+                        }
+                        counter++;
+                    }
+                }
+            }
         }
     }
-    if (y < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y + 1, z))] != 0) {
-            return true;
+    
+    for (int i = 0; i < 26; i++) {
+        if (values[i] != _Microrules[(index * 27) + i]) {
+            return 0;
         }
     }
-    return false;
+
+    return _Microrules[(index * 27) + 26];
 }
 
-
-// 2. The site must share a face with a horizontally adjacent location that contains material and satisfies (1).
-bool Rule2(int x, int y, int z) {
-    if (x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0 && Rule1(x + 1, y, z)) {
-            return true;
+// Return the cell type of the microrule that passes, or 0 if no rules pass.
+int CheckMicrorules(float3 pos) {
+    for (uint i = 0; i < _MicroruleCount; i++) {
+        for (int rot = 0; rot < 4; rot++) {
+            int microrule = CheckMicrorule(i, pos, rot);
+            if (microrule != 0) {
+                return microrule;
+            }
         }
     }
-    if (x > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0 && Rule1(x - 1, y, z)) {
-            return true;
-        }
-    }
-    if (z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0 && Rule1(x, y, z + 1)) {
-            return true;
-        }
-    }
-    if (z > 0) {
-        if (_PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0 && Rule1(x, y, z - 1)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// 3. One face of the site must neighbour three horizontally adjacent locations that each contain material.
-bool Rule3(int x, int y, int z) {
-    if (x < (float) _Resolution - 2 && z > 0 && z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))] != 0) {
-            return true;
-        }
-    }
-    if (x > 0 && z > 0 && z < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z))] != 0 && _PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))] != 0) {
-            return true;
-        }
-    }
-    if (z < (float) _Resolution - 2 && x > 0 && x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z + 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z + 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z + 1))] != 0) {
-            return true;
-        }
-    }
-    if (z > 0 && x > 0 && x < (float) _Resolution - 2) {
-        if (_PastCellValues[GetIndexGlobal(float3(x - 1, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x, y, z - 1))] != 0 && _PastCellValues[GetIndexGlobal(float3(x + 1, y, z - 1))] != 0) {
-            return true;
-        }
-    }
-    return false;
+    return 0;
 }
 
 
 bool TryPlaceBlock(uint3 id, float3 currentPos) {
-    if (RandInt(0, 100, GetSeed(id) + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z) <= 10) {
-        if (Rule1(currentPos.x, currentPos.y, currentPos.z) || Rule2(currentPos.x, currentPos.y, currentPos.z) || Rule3(currentPos.x, currentPos.y, currentPos.z)) {
-            PlaceBlockAt(id, currentPos.x, currentPos.y, currentPos.z);
-            return true;
-        } else {
-            return false;
-        }
+    int microrule = CheckMicrorules(currentPos);
+    if (microrule != 0) {
+        PlaceBlockAt(id, currentPos.x, currentPos.y, currentPos.z, microrule);
+        return true;
     } else {
         return false;
     }
@@ -288,8 +241,18 @@ void AgentStepThroughTime(uint3 id) {
 
 [numthreads(2, 2, 2)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
+    
+    if (_Counter == 0 && id.x == 0 && id.y == 0 && id.z == 0) {
+        _CellValues[GetIndexGlobal(float3(30, 59, 30))] = 1;
 
-   if (_Counter > 0) {
+        _AgentValues[GetIndexGlobal(float3(30, 58, 30))] = 20;
+    }
+
+    if (_Counter == 1 && id.x == 0 && id.y == 0 && id.z == 0) {
+        //TryPlaceBlock(id, float3(15, 58, 15));
+    }
+
+    if (_Counter > 0) {
         AgentStepThroughTime(id);
     }
 

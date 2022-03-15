@@ -28,11 +28,13 @@ public class GPUSimulationWasps : MonoBehaviour {
 		cellValuesBuffer,
 		spawnLocationsBuffer,
 		pastAgentValuesBuffer,
-		pastCellValuesBuffer;
+		pastCellValuesBuffer,
+		microrulesBuffer;
 
 	float step = 1f;
 	int indexStep = 0;
 	int count = 0;
+	int microruleCount;
 	Bounds bounds;
 
 	public bool simulationRunning = true;
@@ -41,6 +43,7 @@ public class GPUSimulationWasps : MonoBehaviour {
 	bool agentsEnabled = true;
 
 	List<Vector3> spawnLocations;
+	List<float> microrules;
 
 	static readonly int
 		materialValuesId = Shader.PropertyToID("_Values"),
@@ -53,11 +56,12 @@ public class GPUSimulationWasps : MonoBehaviour {
 		timeId = Shader.PropertyToID("_Time"),
 		indexStepId = Shader.PropertyToID("_IndexStep"),
 		spawnLocationsId = Shader.PropertyToID("_SpawnLocations"),
-		meshEnabledId = Shader.PropertyToID("_Enabled"),
+		microruleCountId = Shader.PropertyToID("_MicroruleCount"),
+		microrulesId = Shader.PropertyToID("_Microrules"),
 		counterId = Shader.PropertyToID("_Counter");
 
     private void Start() {
-
+		AssignMicrorules4N();
 
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
@@ -66,7 +70,8 @@ public class GPUSimulationWasps : MonoBehaviour {
 		cellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
 		pastAgentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
 		pastCellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
-		spawnLocationsBuffer = new ComputeBuffer(resolution * resolution, sizeof(float) * 3);
+		spawnLocationsBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 3);
+		microrulesBuffer = new ComputeBuffer(27 * microruleCount, sizeof(float));
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
 		indexStep = Mathf.CeilToInt(resolution / 4f);
@@ -76,15 +81,19 @@ public class GPUSimulationWasps : MonoBehaviour {
 		GenerateSpawnLocations();
 		spawnLocationsBuffer.SetData(spawnLocations);
 
+		microrulesBuffer.SetData(microrules);
+
 		computeShader.SetBuffer(0, agentValuesId, agentValuesBuffer);
 		computeShader.SetBuffer(0, cellValuesId, cellValuesBuffer);
 		computeShader.SetBuffer(0, pastAgentValuesId, pastAgentValuesBuffer);
 		computeShader.SetBuffer(0, pastCellValuesId, pastCellValuesBuffer);
 		computeShader.SetBuffer(0, spawnLocationsId, spawnLocationsBuffer);
+		computeShader.SetBuffer(0, microrulesId, microrulesBuffer);
 
 		computeShader.SetInt(resolutionId, resolution);
 		computeShader.SetInt(indexStepId, indexStep);
 		computeShader.SetInt(counterId, 0);
+		computeShader.SetInt(microruleCountId, microruleCount);
 
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);
@@ -101,6 +110,8 @@ public class GPUSimulationWasps : MonoBehaviour {
 		pastCellValuesBuffer = null;
 		spawnLocationsBuffer.Release();
 		spawnLocationsBuffer = null;
+		microrulesBuffer.Release();
+		microrulesBuffer = null;
 	}
 
 	void ClearBuffers() {
@@ -114,14 +125,13 @@ public class GPUSimulationWasps : MonoBehaviour {
 	}
 
 	void Update() {
-		DoSimulation(100);
-		Debug.Log(count);
+		DoSimulation(50000);
 		ShowMesh();
 	}
 
     bool DoSimulation(int frameCount) {
 		if (count == 0) {
-			List<float> values = SpawnAgents(300);
+			List<float> values = SpawnAgents(0);
 			agentValuesBuffer.SetData(values);
 			pastAgentValuesBuffer.SetData(values);
 		}
@@ -170,9 +180,10 @@ public class GPUSimulationWasps : MonoBehaviour {
 
 	void GenerateSpawnLocations() {
 		for (int x = 0; x < resolution; x++) {
-			for (int z = 0; z < resolution; z++) {
-				spawnLocations.Add(new Vector3(x, 0, z));
-
+			for (int y = 0; y < resolution; y++) {
+				for (int z = 0; z < resolution; z++) {
+					spawnLocations.Add(new Vector3(x, y, z));
+				}
 			}
 		}
 	}
@@ -204,4 +215,96 @@ public class GPUSimulationWasps : MonoBehaviour {
 		agentsEnabled = !agentsEnabled;
 	}
 
+	void AssignMicrorules4DE() {
+		microruleCount = 9;
+
+		microrules = new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 2,2,2,2,2,2,2,2,2, 1 };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+		microrules = new List<float> { };
+	}
+
+	void AssignMicrorules4N() {
+		microruleCount = 66;
+
+		microrules = new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,1,0,0,0,0, 2 };
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,2,0,0,0,0, 0,0,0,1,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 2,2,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,2,0,2,0,0,0, 0,1,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,2,0,2,0,0,0, 0,0,1,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,2,0,2,2,0, 0,0,0,0,0,1,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,2,2, 0,0,0,0,0,0,0,0,1, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,2,0,2,2,2, 0,0,0,0,0,0,0,1,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,2,0,2,2,0, 0,0,0,0,0,0,1,0,0, 2 });
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 2,2,2,2,2,2,2,2,2, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,2,0,0,0,0, 2,2,0,2,2,0,2,2,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,0,0,2,0,1,0,0, 2,2,0,2,2,0,2,2,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,1,0,2,1,0, 0,0,0,2,2,0,2,2,0, 1 });
+
+		microrules.AddRange(new List<float> { 1,0,0,1,0,0,1,0,0, 2,0,0,2,0,2,0,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 1,0,0,1,0,0,0,0,0, 2,1,0,2,0,0,0,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 1,1,0,0,0,0,0,0,0, 2,2,1,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 1,1,1,0,0,0,0,0,0, 2,2,2,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,1,0,0,0,0,0,0, 0,0,2,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,1,0,0,1,0,0, 1,1,0,2,0,2,1,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,1,0,0,1,0,0,0, 0,0,2,0,2,0,0,1, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,1,0,0,0,0,0,0, 0,1,2,0,1,0,0,2, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,1, 0,0,0,0,1,2,1,2, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,1,1,0, 0,0,0,0,1,2,1,2, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 1,1,1,0,0,0,0,0,0, 2,2,2,0,1,0,0,2, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,1,0,0,1,0,0, 1,0,0,2,0,2,1,0, 0,0,0,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,1,0,0, 0,0,0,1,0,2,1,0, 0,0,0,0,0,0,0,0,0, 1 });
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,0,0,1,0,1,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,2,0,1,0,1,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,2,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,1,2,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,2,0,2,0,0,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,2,0,1,0,1,2,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 2,0,0,1,0,1,2,0, 0,0,0,0,0,0,0,0,0, 2 });
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,2,0,1,2,0,1,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,0,0, 1,2,0,1,2,0,1,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,0,0, 1,2,0,2,2,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,2,0,2,0,0,0, 1,1,2,2,2,2,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,2,0,0,0, 2,1,1,2,2,2,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,2,0, 1,2,0,1,2,0,1,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,0,0,0,0, 0,0,2,0,2,0,0,0, 1,1,2,2,2,2,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,0,0,0,0, 0,0,2,2,2,0,0,0, 1,1,2,2,2,2,0,0,0, 2 });
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,2,0,0,2,0,0,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,0,0, 0,2,0,0,2,0,0,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,0,0, 0,2,0,0,2,0,2,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,0,0, 0,2,0,2,2,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,2,0,2,0,0,0, 0,0,2,2,2,2,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 2,2,0,0,0,0,2,0, 2,2,0,0,2,0,0,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,2,0, 0,2,0,0,2,0,0,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,2,0,0, 0,0,0,2,0,2,0,0, 0,0,0,2,2,2,2,0,0, 2 });
+		microrules.AddRange(new List<float> { 2,0,0,0,0,0,0,0,0, 2,2,0,0,0,0,2,0, 2,2,0,0,2,0,0,2,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,0,0,0,0,2,2, 0,2,0,0,2,0,0,2,2, 2 });
+
+		microrules.AddRange(new List<float> { 0,0,2,0,0,2,2,2,2, 0,0,2,0,2,2,2,2, 0,0,2,0,0,2,2,2,2, 1 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,2,2,2, 0,0,0,0,1,2,2,2, 0,0,0,0,0,0,2,2,2, 1 });
+		microrules.AddRange(new List<float> { 2,0,0,2,0,0,2,2,2, 2,0,0,2,1,2,2,2, 2,0,0,2,0,0,2,2,2, 1 });
+		microrules.AddRange(new List<float> { 2,0,0,2,0,0,2,0,0, 2,0,0,2,0,2,1,1, 2,0,0,2,0,0,2,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,2,0,0,2, 0,1,2,0,2,0,1,2, 0,0,2,0,0,2,0,0,2, 1 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,2,0,0,2, 0,1,2,0,2,1,1,2, 0,0,2,0,0,2,0,0,2, 1 });
+		microrules.AddRange(new List<float> { 2,2,2,0,0,0,0,0,0, 2,2,2,1,0,1,2,0, 2,2,2,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 2,2,2,0,0,0,0,0,0, 2,2,2,1,0,2,0,0, 2,2,2,0,0,0,0,0,0, 1 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,2,0,0,2, 0,1,2,0,2,2,0,2, 0,0,2,0,0,2,0,0,2, 1 });
+		microrules.AddRange(new List<float> { 0,0,2,0,0,2,0,0,2, 0,1,2,2,2,1,1,2, 0,0,2,0,0,2,0,0,2, 1 });
+
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,1,1,2,0,1,2,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 1,1,1,2,0,2,0,0, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 2,0,1,0,0,2,0,1, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 0,2,1,2,1,1,1,1, 0,0,0,0,0,0,0,0,0, 2 });
+		microrules.AddRange(new List<float> { 0,0,0,0,0,0,0,0,0, 2,2,1,0,1,2,2,1, 0,0,0,0,0,0,0,0,0, 2 });
+	}
 }	
