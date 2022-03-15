@@ -243,9 +243,9 @@ void AgentStepThroughTime(uint3 id) {
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
     
     if (_Counter == 0 && id.x == 0 && id.y == 0 && id.z == 0) {
-        _CellValues[GetIndexGlobal(float3(30, 59, 30))] = 1;
+        _CellValues[GetIndexGlobal(float3(30, 29, 30))] = 1;
 
-        _AgentValues[GetIndexGlobal(float3(30, 58, 30))] = 20;
+        _AgentValues[GetIndexGlobal(float3(30, 28, 30))] = 20;
     }
 
     if (_Counter == 1 && id.x == 0 && id.y == 0 && id.z == 0) {
