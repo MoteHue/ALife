@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.2966366, g: 0.6336363, b: 0.99371, a: 1}
+  m_IndirectSpecularColor: {r: 0.29738164, g: 0.63390774, b: 0.99368745, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -3044,6 +3044,71 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1277558019}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1001 &1309536344
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1275113876838332388, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: computeShader
+      value: 
+      objectReference: {fileID: 7200000, guid: 046c4f1f316f6e941bb0eef4e7bd86d3, type: 3}
+    - target: {fileID: 1275113876838332389, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_Name
+      value: GPU Simulation Wasps
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_RootOrder
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332391, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1884968234193158079, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
+      propertyPath: agentMesh
+      value: 
+      objectReference: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d144072c9443f0b40bace599b13dbb1e, type: 3}
 --- !u!1 &1349951734
 GameObject:
   m_ObjectHideFlags: 0
@@ -4651,7 +4716,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1275113876838332389, guid: c2be3208783ffcd43b96da8b66f9c9c9, type: 3}
       propertyPath: m_Name
-      value: GPU Simulation
+      value: GPU Simulation Termites
+      objectReference: {fileID: 0}
+    - target: {fileID: 1275113876838332389, guid: c2be3208783ffcd43b96da8b66f9c9c9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1275113876838332391, guid: c2be3208783ffcd43b96da8b66f9c9c9, type: 3}
       propertyPath: m_RootOrder
@@ -4706,6 +4775,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3644796003654767038, guid: c2be3208783ffcd43b96da8b66f9c9c9, type: 3}
+      propertyPath: m_RootOrder
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8825205257402192175, guid: c2be3208783ffcd43b96da8b66f9c9c9, type: 3}
       propertyPath: m_RootOrder
       value: 2
       objectReference: {fileID: 0}

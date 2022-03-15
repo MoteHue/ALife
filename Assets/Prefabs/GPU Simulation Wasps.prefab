@@ -271,9 +271,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1275113876838332391}
-  - component: {fileID: 1275113876838332388}
+  - component: {fileID: 1884968234193158079}
   m_Layer: 0
-  m_Name: GPU Simulation
+  m_Name: GPU Simulation Wasps
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -294,7 +294,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1275113876838332388
+--- !u!114 &1884968234193158079
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -303,20 +303,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1275113876838332389}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f3be2bea5e26c10499c1f894e39e190d, type: 3}
+  m_Script: {fileID: 11500000, guid: 5acd9d33304879047809e4477a7cb71d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   floorPrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
-  computeShader: {fileID: 7200000, guid: 98686e747917c9846bd5f7837fcbd46b, type: 3}
+  computeShader: {fileID: 7200000, guid: 046c4f1f316f6e941bb0eef4e7bd86d3, type: 3}
   agentMaterial: {fileID: 2100000, guid: 4cbddc032cfafd34f8771d311a3e87db, type: 2}
   agentMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   cellMaterial: {fileID: 2100000, guid: 960fd4adaf6de514bbc4244dd81bbbcf, type: 2}
   cellMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  queenPheromoneMaterial: {fileID: 2100000, guid: 42dc4cc660f2e0d478d81e698db700a3, type: 2}
-  cementPheromoneMaterial: {fileID: 2100000, guid: e5277101fca72374f90ad119b5ee1476, type: 2}
-  pheromoneMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  genPopText: {fileID: 7506648198348673689}
-  progressImage: {fileID: 8347293461977682547}
   simulationRunning: 1
 --- !u!1 &1275113876866339020
 GameObject:
@@ -439,7 +434,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1275113876838332388}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GPUSimulation, Assembly-CSharp
         m_MethodName: ToggleAgents
         m_Mode: 1
@@ -572,7 +567,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1275113876838332388}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GPUSimulation, Assembly-CSharp
         m_MethodName: TogglePheromones
         m_Mode: 1
@@ -784,7 +779,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1275113876838332388}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GPUSimulation, Assembly-CSharp
         m_MethodName: ToggleCells
         m_Mode: 1
