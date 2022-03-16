@@ -187,12 +187,12 @@ int CheckMicrorule(int index, float3 pos, int rotation) {
     }
     
     for (int i = 0; i < 26; i++) {
-        if (values[i] != _Microrules[(index * 27) + i]) {
+        if (values[i] != _Microrules[(index * 28) + i]) {
             return 0;
         }
     }
 
-    return _Microrules[(index * 27) + 26];
+    return _Microrules[(index * 28) + 26];
 }
 
 // Return the cell type of the microrule that passes, or 0 if no rules pass.
@@ -201,6 +201,7 @@ int CheckMicrorules(float3 pos) {
         for (int rot = 0; rot < 4; rot++) {
             int microrule = CheckMicrorule(i, pos, rot);
             if (microrule != 0) {
+                _Microrules[(i * 28) + 27] = 1;
                 return microrule;
             }
         }

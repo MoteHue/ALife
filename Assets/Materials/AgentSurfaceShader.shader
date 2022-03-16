@@ -1,8 +1,8 @@
-Shader "Custom/OpaqueSurfaceShader"
+Shader "Custom/AgentSurfaceShader"
 {
     Properties
     {
-        _Color ("Color", Color) = (1,1,1,1)
+        _Color("Color", Color) = (1,1,1,1)
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
     }
@@ -39,7 +39,7 @@ Shader "Custom/OpaqueSurfaceShader"
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
                 float value = _Values[unity_InstanceID];
 
-                if (value <= 0) {
+                if (value <= 0/* || unity_InstanceID % _Resolution == 27 || unity_InstanceID % _Resolution == 33*/) {
                     unity_ObjectToWorld = 0.0;
                 }
                 else {

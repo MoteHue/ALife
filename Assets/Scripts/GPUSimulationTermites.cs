@@ -189,7 +189,6 @@ public class GPUSimulationTermites : MonoBehaviour {
 	}
 
 	List<float> MutateGenome(List<float> genome) {
-		List<float> returnList = new List<float>();
 		float minRange = Mathf.Clamp(Gaussian(genome[0], 0.05f), 0f, 1f);
 		float maxRange = Mathf.Clamp(Gaussian(genome[1], 0.05f), 0f, 1f);
 
@@ -230,6 +229,13 @@ public class GPUSimulationTermites : MonoBehaviour {
 	}
 
 	void Update() {
+
+		DoGeneticAlgorithm();
+		
+		ShowMesh();
+	}
+
+	void DoGeneticAlgorithm() {
 		if (genCounter < noOfGenerations) {
 			if (popCounter < popSize) {
 				if (count == 0) {
@@ -238,7 +244,7 @@ public class GPUSimulationTermites : MonoBehaviour {
 				}
 				if (count % 10 == 0) {
 					progressImage.transform.localScale = new Vector3(count / 1000f, 1f, 1f);
-                }
+				}
 				bool finished = DoSimulation(1000);
 				if (finished) {
 					float fitness = CalcDomeFitness(new Vector3(30, 0, 30), 10f);
@@ -255,12 +261,12 @@ public class GPUSimulationTermites : MonoBehaviour {
 				for (int i = 1; i < popSize; i++) {
 					if (results[genCounter][i].Item2 > bestResult.Item2) {
 						bestResult = result[i];
-                    }
-                }
+					}
+				}
 				genomes[0] = bestResult.Item1;
 				for (int i = 1; i < popSize; i++) {
 					genomes[i] = MutateGenome(bestResult.Item1);
-                }
+				}
 				Debug.Log($"BEST: gen: {genCounter}, bestmin: {bestResult.Item1[0]}, bestmax: {bestResult.Item1[1]}, fitness: {bestResult.Item2}");
 				string output = $"gen {genCounter} results\n";
 				for (int i = 0; i < popSize; i++) {
@@ -272,14 +278,11 @@ public class GPUSimulationTermites : MonoBehaviour {
 				output = $"gen {genCounter} setup\n";
 				for (int i = 0; i < popSize; i++) {
 					output += $"genome {i}: [{genomes[i][0]}, {genomes[i][1]}]\n";
-                }
+				}
 				Debug.Log(output);
 				genPopText.text = $"Gen: {genCounter} Pop: {popCounter}";
 			}
 		}
-		
-		
-		ShowMesh();
 	}
 
     bool DoSimulation(int frameCount) {
