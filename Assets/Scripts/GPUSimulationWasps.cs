@@ -40,13 +40,13 @@ public class GPUSimulationWasps : MonoBehaviour {
 	float step = 1f;
 	int indexStep = 0;
 	int count = 0;
-	int microruleCount;
+	int microruleCount = 50;
 	Bounds bounds;
 
 	List<List<float>> templates;
 
 	int popSize = 30;
-	int noOfGenerations = 100;
+	int noOfGenerations = 500;
 
 	List<List<float>> genomes;
 
@@ -81,7 +81,7 @@ public class GPUSimulationWasps : MonoBehaviour {
 
     private void Start() {
 		GenerateTemplates();
-		AssignMicrorules4N();
+		//AssignMicrorules4N();
 
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
@@ -96,12 +96,14 @@ public class GPUSimulationWasps : MonoBehaviour {
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
 		indexStep = Mathf.CeilToInt(resolution / 4f);
 		computeShader.SetFloat(stepId, step);
+		result = new List<(List<float>, float)>();
+		results = new List<List<(List<float>, float)>>();
 
 		spawnLocations = new List<Vector3>();
 		GenerateSpawnLocations();
 		spawnLocationsBuffer.SetData(spawnLocations);
 
-		microrulesBuffer.SetData(microrules);
+		SetRandomGenomes();
 
 		computeShader.SetBuffer(0, agentValuesId, agentValuesBuffer);
 		computeShader.SetBuffer(0, cellValuesId, cellValuesBuffer);
@@ -118,7 +120,7 @@ public class GPUSimulationWasps : MonoBehaviour {
 		agentMaterial.SetInt(resolutionId, resolution);
 		cellMaterial.SetInt(resolutionId, resolution);
 
-		SetRandomGenomes();
+		
 	}
 
 	void OnDisable() {
@@ -156,14 +158,78 @@ public class GPUSimulationWasps : MonoBehaviour {
 	}
 
 	void Update() {
-		DoSimulation(5000);
-		//DoGeneticAlgorithm();
+		//DoSimulation(5000);
+		DoGeneticAlgorithm();
 		ShowMesh();
 	}
 
+	bool GenomeAlreadyContainsMicrorule(List<float> genome, List<float> microrule) {
+		for (int i = 0; i < genome.Count / 28; i++) {
+			// rotation 0°
+			bool microruleFound = true;
+			for (int j = 0; j < 26; j++) {
+				if (microrule[j] == genome[(i * 28) + j]) {
+					microruleFound = false;
+					break;
+                }
+            }
+			if (microruleFound) return true;
+
+			// rotation 90°
+			List<int> indices = new List<int> { 2,5,8,1,4,7,0,3,6, 11,13,16,10,15,9,12,14, 19,22,25,18,21,24,17,20,23 };
+			microruleFound = true;
+			for (int j = 0; j < 26; j++) {
+				if (microrule[j] == genome[(i * 28) + indices[j]]) {
+					microruleFound = false;
+					break;
+				}
+			}
+			if (microruleFound) return true;
+
+			// rotation 180°
+			indices = new List<int> { 8,7,6,5,4,3,2,1,0, 16,15,14,13,12,11,10,9, 25,24,23,22,21,20,19,18,17 };
+			microruleFound = true;
+			for (int j = 0; j < 26; j++) {
+				if (microrule[j] == genome[(i * 28) + indices[j]]) {
+					microruleFound = false;
+					break;
+				}
+			}
+			if (microruleFound) return true;
+
+			// rotation 270°
+			indices = new List<int> { 6,3,0,7,4,1,8,5,2, 14,12,9,15,10,16,13,11, 23,20,17,24,21,18,25,22,19 };
+			microruleFound = true;
+			for (int j = 0; j < 26; j++) {
+				if (microrule[j] == genome[(i * 28) + indices[j]]) {
+					microruleFound = false;
+					break;
+				}
+			}
+			if (microruleFound) return true;
+		}
+		return false;
+    }
+
 	void SetRandomGenomes() {
+		genomes = new List<List<float>>();
 		for (int i = 0; i < popSize; i++) {
-			//TODO: add random genomes
+			List<float> genome = new List<float>();
+			for (int j = 0; j < microruleCount; j++) { 
+				bool isNewMicrorule = false;
+				List<float> microrule = new List<float>();
+				while (!isNewMicrorule) {
+					microrule = GenerateRandomMicrorule();
+					isNewMicrorule = !GenomeAlreadyContainsMicrorule(genome, microrule);
+				}
+				string output = "";
+				for (int k = 0; k < 28; k++) {
+					output += $",{microrule[k]} ";
+                }
+				//Debug.Log(output);
+				genome.AddRange(microrule);
+            }
+			genomes.Add(genome);
         }
     }
 
@@ -174,11 +240,11 @@ public class GPUSimulationWasps : MonoBehaviour {
 					microrules = genomes[popCounter];
 				}
 				if (count % 10 == 0) {
-					progressImage.transform.localScale = new Vector3(count / 1000f, 1f, 1f);
+					progressImage.transform.localScale = new Vector3(count / 100f, 1f, 1f);
 				}
-				bool finished = DoSimulation(1000);
+				bool finished = DoSimulation(100);
 				if (finished) {
-					float fitness = CalcLineFitness();
+					float fitness = CalcLineFitness2();
 					result.Add((genomes[popCounter], fitness));
 					popCounter++;
 					ClearBuffers();
@@ -188,29 +254,117 @@ public class GPUSimulationWasps : MonoBehaviour {
 			} else {
 				results.Add(result);
 				popCounter = 0;
-				(List<float>, float) bestResult = result[0];
+
+				(List<float>, float) bestResult = results[genCounter][0];
+				int bestResultIndex = 0;
 				for (int i = 1; i < popSize; i++) {
 					if (results[genCounter][i].Item2 > bestResult.Item2) {
-						bestResult = result[i];
+						bestResult = results[genCounter][i];
+						bestResultIndex = i;
 					}
 				}
-				
+
+				for (int i = 0; i < microruleCount; i++) {
+					bestResult.Item1[i * 28 + 27] = 0;
+                }
+
+				for (int j = 0; j < popSize; j++) {
+					// ------------------ Select new parents ----------------------- //
+					float sum = 0;
+					for (int i = 0; i < popSize; i++) {
+						if (results[genCounter][i].Item2 > 0) {
+							sum += results[genCounter][i].Item2;
+						}
+					}
+					List<(int, float)> indicesAndProportions = new List<(int, float)>();
+					for (int i = 0; i < popSize; i++) {
+						if (results[genCounter][i].Item2 > 0) {
+							indicesAndProportions.Add((i, (results[genCounter][i].Item2 / sum) * 100));
+						}
+					}
+					(int, int) parentIndices = (0, 0);
+					float choice = Random.Range(0f, 100f);
+					float sum2 = 0;
+					for (int i = 0; i < indicesAndProportions.Count; i++) {
+						if (sum2 + indicesAndProportions[i].Item2 >= choice) {
+							parentIndices.Item1 = i;
+							sum -= results[genCounter][parentIndices.Item1].Item2;
+						} else {
+							sum2 += indicesAndProportions[i].Item2;
+						}
+					}
+					indicesAndProportions = new List<(int, float)>();
+					for (int i = 0; i < popSize; i++) {
+						if (results[genCounter][i].Item2 > 0 && i != parentIndices.Item1) {
+							indicesAndProportions.Add((i, (results[genCounter][i].Item2 / sum) * 100));
+						}
+					}
+					choice = Random.Range(0f, 100f);
+					sum2 = 0;
+					for (int i = 0; i < indicesAndProportions.Count; i++) {
+						if (sum2 + indicesAndProportions[i].Item2 >= choice) {
+							parentIndices.Item2 = i;
+						} else {
+							sum2 += indicesAndProportions[i].Item2;
+						}
+					}
+					// ------------------ New parents selected ----------------------- //
+
+					bool doTwoPointCrossover = false;
+					if (Random.Range(0f, 1f) <= 0.2f) doTwoPointCrossover = true;
+					if (doTwoPointCrossover) {
+						int index1 = Random.Range(0, microruleCount);
+						int index2 = Random.Range(0, microruleCount);
+						while (index1 == index2) {
+							index2 = Random.Range(0, microruleCount);
+						}
+						(int, int) twoPoints = (Mathf.Min(index1, index2), Mathf.Max(index1, index2));
+						List<float> newGenome = new List<float>();
+						for (int a = 0; a < twoPoints.Item1; a++) {
+							List<float> microrule = new List<float>();
+							for (int k = 0; k < 28; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item1].Item1[a * 28 + k]);
+                            }
+							newGenome.AddRange(microrule);
+                        }
+						for (int b = twoPoints.Item1; b < twoPoints.Item2; b++) {
+							List<float> microrule = new List<float>();
+							for (int k = 0; k < 28; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item2].Item1[b * 28 + k]);
+							}
+							newGenome.AddRange(microrule);
+						}
+						for (int c = twoPoints.Item2; c < microruleCount; c++) {
+							List<float> microrule = new List<float>();
+							for (int k = 0; k < 28; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item1].Item1[c * 28 + k]);
+							}
+							newGenome.AddRange(microrule);
+						}
+						genomes[j] = newGenome;
+					} else {
+						genomes[j] = results[genCounter][parentIndices.Item1].Item1;
+                    }
+				}
+
+				// Genome mutation
 				for (int i = 0; i < popSize; i++) {
 					genomes[i] = MutateGenome(genomes[i]);
 				}
-				Debug.Log($"BEST: gen: {genCounter}, bestgenome: {bestResult.Item1}, fitness: {bestResult.Item2}");
+
+				// Elitism
+				genomes[bestResultIndex] = bestResult.Item1;
+
+				Debug.Log($"gen {genCounter}, Best genome: {bestResultIndex}, fitness: {bestResult.Item2}");
 				string output = $"gen {genCounter} results\n";
 				for (int i = 0; i < popSize; i++) {
-					output += $"genome {i}: [{result[i].Item1}], fitness: {result[i].Item2}\n";
+					output += $"genome {i}: fitness: {result[i].Item2}\n";
 				}
 				Debug.Log(output);
+
 				result = new List<(List<float>, float)>();
 				genCounter++;
-				output = $"gen {genCounter} setup\n";
-				for (int i = 0; i < popSize; i++) {
-					output += $"genome {i}: [{genomes[i]}]\n";
-				}
-				Debug.Log(output);
+
 				genPopText.text = $"Gen: {genCounter} Pop: {popCounter}";
 			}
 		}
@@ -234,32 +388,14 @@ public class GPUSimulationWasps : MonoBehaviour {
 			}
 
 			if (shouldReplaceMicrorule) {
-				bool doTwoPointCrossover = false;
-				if (Random.Range(0f, 1f) < 0.2f) doTwoPointCrossover = true;
-
-				if (doTwoPointCrossover) {
-
-				} else { // Replace with random new microrule
-					bool microruleIsUnique = false;
-					while (!microruleIsUnique) {
-						microrule = GenerateRandomMicrorule();
-
-						for (int j = 0; j < i; j++) {
-							bool allEqual = true;
-							for (int k = 0; k < 26; k++) {
-								// TODO: Check rotations of microrule for equality.
-								if ((microrule[k] == 0 && returnList[(j * 28) + k] == 0) || (microrule[k] > 0 && returnList[(j * 28) + k] > 0)) {
-									allEqual = false;
-									break;
-                                }
-                            }
-							if (allEqual) {
-								microruleIsUnique = false;
-                            }
-                        }
-                    }
+				bool microruleIsUnique = false;
+				while (!microruleIsUnique) {
+					microrule = GenerateRandomMicrorule();
+					microruleIsUnique = !GenomeAlreadyContainsMicrorule(returnList, microrule);
 				}
 			}
+
+			microrule[27] = 0;
 			
 			returnList.AddRange(microrule);
 		}
@@ -273,17 +409,71 @@ public class GPUSimulationWasps : MonoBehaviour {
 		List<float> values = new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 };
 		List<int> initialCardinalDirections = new List<int> { 4, 10, 12, 13, 15, 21 };
 
+		float oneChance = 0.8f;
+
+		List<float> template = templates[Random.Range(0, templates.Count)];
+		for (int i = 0; i < 26; i++) {
+			if (Random.Range(0f, 1f) < template[i]) {
+				/*if (Random.Range(0f, 1f) < oneChance) {
+					values[i] = 1;
+				} else {
+					values[i] = 2;
+                }
+				oneChance = Mathf.Max(0.1f, oneChance - 0.15f);*/
+				values[i] = Random.Range(1, 3);
+			}
+		}
+
 		values[initialCardinalDirections[Random.Range(0, 6)]] = Random.Range(1, 3);
 
-		// TODO: add cells from random template
+		returnList.AddRange(values);
 
 		returnList.Add(Random.Range(1, 3));
 		returnList.Add(0f);
+
 		return returnList;
     }
 
 	float CalcLineFitness() {
-		return 0;
+		float fitness = 0;
+		float[] values = new float[resolution * resolution * resolution];
+		cellValuesBuffer.GetData(values);
+
+		for (int x = 0; x < resolution; x++) {
+			for (int y = 0; y < resolution; y++) {
+				for (int z = 0; z < resolution; z++) {
+					if (z == 0 && y == 0 && (x == 32 || x == 34 || x == 36 || x == 38 || x == 40 || x == 42 || x == 44 || x == 46 || x == 48 || x == 50 || x == 52 || x == 54 || x == 56 || x == 58)) {
+						if (values[x + y * resolution + z * resolution * resolution] == 1) {
+							fitness += 1;
+						} else if (values[x + y * resolution + z * resolution * resolution] == 2) {
+							fitness -= 1f;
+						}
+					} else if (z == 0 && y == 0 && (x == 31 || x == 33 || x == 35 || x == 37 || x == 39 || x == 41 || x == 43 || x == 45 || x == 47 || x == 49 || x == 51)) {
+						if (values[x + y * resolution + z * resolution * resolution] == 1) {
+							fitness -= 1;
+						}
+					}
+				}
+			}
+		}
+		return fitness;
+	}
+
+	float CalcLineFitness2() {
+		float fitness = 0;
+		float[] values = new float[resolution * resolution * resolution];
+		cellValuesBuffer.GetData(values);
+
+		int counter = 0;
+		for (int x = 59; x > 30; x--) {
+			if (values[x] == 1) {
+				if (counter == 2) fitness++;
+				counter = 0;
+			} else if (values[x] == 2) {
+				counter++;
+            }
+        }
+		return fitness;
     }
 
 	bool DoSimulation(int frameCount) {
@@ -303,9 +493,20 @@ public class GPUSimulationWasps : MonoBehaviour {
 
 	void GenerateTemplates() {
 		templates = new List<List<float>>();
-		//TODO: templates
-		templates.Add(new List<float> { });
-    }
+
+		templates.Add(new List<float> { 0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f, 0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f, 0.1f,0.1f,0.1f,0.1f,0.1f,0.1f,0.1f,0.1f,0.1f });
+		templates.Add(new List<float> { 0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f, 0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f, 0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f,0.01f });
+		templates.Add(new List<float> { 0.1f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f, 0.1f, 0.1f, 0.01f, 0.1f, 0.01f, 0.1f, 0.1f, 0.01f, 0.1f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.01f, 0.05f, 0.1f, 0.01f, 0.1f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.1f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.05f, 0.1f, 0.01f, 0.1f, 0.1f });
+		templates.Add(new List<float> { 0.1f, 0.1f, 0.1f, 0.1f, 0.5f, 0.1f, 0.1f, 0.1f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.1f, 0.5f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.1f, 0.5f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.1f, 0.5f, 0.5f, 0.1f, 0.01f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.1f, 0.01f, 0.1f, 0.5f, 0.1f, 0.01f, 0.1f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.1f, 0.01f, 0.1f, 0.5f, 0.1f, 0.01f, 0.1f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.5f, 0.1f, 0.01f, 0.1f, 0.1f, 0.01f, 0.1f, 0.5f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.5f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+		templates.Add(new List<float> { 0.01f, 0.01f, 0.01f, 0.5f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.5f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f, 0.01f });
+	}
 
 	void ShowMesh() {
 		if (agentsEnabled) {

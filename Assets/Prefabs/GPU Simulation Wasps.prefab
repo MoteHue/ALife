@@ -311,6 +311,8 @@ MonoBehaviour:
   agentMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   cellMaterial: {fileID: 2100000, guid: 960fd4adaf6de514bbc4244dd81bbbcf, type: 2}
   cellMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  genPopText: {fileID: 7506648198348673689}
+  progressImage: {fileID: 8347293461977682547}
   simulationRunning: 1
 --- !u!1 &1275113876866339020
 GameObject:
