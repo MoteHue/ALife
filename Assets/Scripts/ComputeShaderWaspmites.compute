@@ -339,14 +339,14 @@ float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
         }
 
         if (currentPos.x + move.x < 0 || currentPos.x + move.x >= (float)_Resolution || currentPos.z + move.z < 0 || currentPos.z + move.z >= (float)_Resolution) { // Moving out of grid
-            float3 newPos = CompleteLifeCycle(id, currentPos);
+            float3 newPos = CompleteLifeCycleTrail(id, currentPos);
             return newPos;
         } else { // Moving within grid
             MakeMoveTrail(currentPos, currentPos + move);
             return currentPos + move;
         }
     } else {
-        float3 newPos = CompleteLifeCycle(id, currentPos);
+        float3 newPos = CompleteLifeCycleTrail(id, currentPos);
         return newPos;
     }
 }

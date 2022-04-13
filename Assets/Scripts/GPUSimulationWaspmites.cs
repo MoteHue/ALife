@@ -38,7 +38,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	[SerializeField]
 	Image progressImage;
 
-	const int resolution = 100;
+	const int resolution = 60;
 
 	ComputeBuffer
 		agentValuesBuffer,
