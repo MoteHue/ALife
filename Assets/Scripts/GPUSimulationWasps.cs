@@ -409,7 +409,7 @@ public class GPUSimulationWasps : MonoBehaviour {
 		List<float> values = new List<float> { 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 };
 		List<int> initialCardinalDirections = new List<int> { 4, 10, 12, 13, 15, 21 };
 
-		float oneChance = 0.8f;
+		//float oneChance = 0.8f;
 
 		List<float> template = templates[Random.Range(0, templates.Count)];
 		for (int i = 0; i < 26; i++) {
