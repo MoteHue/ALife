@@ -35,7 +35,7 @@ Shader "Custom/CementSurfaceShader"
         float alpha;
 
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                StructuredBuffer<float2> _Values;
+                StructuredBuffer<float3> _Values;
         #endif
 
         void ConfigureProcedural() {

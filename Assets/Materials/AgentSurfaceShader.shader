@@ -32,14 +32,14 @@ Shader "Custom/AgentSurfaceShader"
         int _Resolution;
 
         #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                StructuredBuffer<float> _Values;
+                StructuredBuffer<float2> _Values;
         #endif
 
         void ConfigureProcedural() {
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                float value = _Values[unity_InstanceID];
+                float value = _Values[unity_InstanceID].x;
 
-                if (value <= 0/* || unity_InstanceID % _Resolution == 27 || unity_InstanceID % _Resolution == 33*/) {
+                if (value <= 0 /* || unity_InstanceID % _Resolution == 27 || unity_InstanceID % _Resolution == 33*/) {
                     unity_ObjectToWorld = 0.0;
                 }
                 else {

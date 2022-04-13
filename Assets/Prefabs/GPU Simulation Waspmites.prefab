@@ -309,11 +309,13 @@ MonoBehaviour:
   floorPrefab: {fileID: 4348884303156202073, guid: 4790bde423b060041af5f453ead1a3d2, type: 3}
   computeShader: {fileID: 7200000, guid: 353bdff1aeab8d54082ccc2c411fd30f, type: 3}
   agentMaterial: {fileID: 2100000, guid: 4cbddc032cfafd34f8771d311a3e87db, type: 2}
+  trailAgentMaterial: {fileID: 2100000, guid: 0b4df6f5351ba3c449f36fa18168a2fa, type: 2}
   agentMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   cellMaterial: {fileID: 2100000, guid: 960fd4adaf6de514bbc4244dd81bbbcf, type: 2}
   cellMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   queenPheromoneMaterial: {fileID: 2100000, guid: 42dc4cc660f2e0d478d81e698db700a3, type: 2}
   cementPheromoneMaterial: {fileID: 2100000, guid: e5277101fca72374f90ad119b5ee1476, type: 2}
+  trailPheromoneMaterial: {fileID: 2100000, guid: f2f2b594f72e4ac4caadb2956f5defdb, type: 2}
   pheromoneMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   genPopText: {fileID: 7506648198348673689}
   progressImage: {fileID: 8347293461977682547}

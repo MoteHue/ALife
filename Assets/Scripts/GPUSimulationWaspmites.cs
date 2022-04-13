@@ -14,6 +14,8 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	[SerializeField]
 	Material agentMaterial;
 	[SerializeField]
+	Material trailAgentMaterial;
+	[SerializeField]
 	Mesh agentMesh;
 
 	[SerializeField]
@@ -26,6 +28,8 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	[SerializeField]
 	Material cementPheromoneMaterial;
 	[SerializeField]
+	Material trailPheromoneMaterial;
+	[SerializeField]
 	Mesh pheromoneMesh;
 
 	[SerializeField]
@@ -34,7 +38,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	[SerializeField]
 	Image progressImage;
 
-	const int resolution = 60;
+	const int resolution = 100;
 
 	ComputeBuffer
 		agentValuesBuffer,
@@ -118,12 +122,12 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		GameObject floor = Instantiate(floorPrefab, transform.position, transform.rotation);
 		floor.GetComponent<Floor>().SetScale(resolution, resolution, resolution);
 
-		agentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		agentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
 		cellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
-		pheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
-		pastAgentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
+		pheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 3);
+		pastAgentValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
 		pastCellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
-		pastPheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 2);
+		pastPheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 3);
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
 		microrulesBuffer = new ComputeBuffer(30 * microruleCount, sizeof(float));
 
@@ -157,6 +161,8 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		cellMaterial.SetInt(resolutionId, resolution);
 		queenPheromoneMaterial.SetInt(resolutionId, resolution);
 		cementPheromoneMaterial.SetInt(resolutionId, resolution);
+		trailPheromoneMaterial.SetInt(resolutionId, resolution);
+		trailAgentMaterial.SetInt(resolutionId, resolution);
 
 		SetQueenCells();
 
@@ -371,7 +377,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	}
 
 	void ClearBuffers() {
-		float[] values = new float[resolution * resolution * resolution];
+		float[] values = new float[resolution * resolution * resolution * 2];
 		agentValuesBuffer.SetData(values);
 		pastAgentValuesBuffer.SetData(values);
 
@@ -379,7 +385,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		cellValuesBuffer.SetData(values);
 		pastCellValuesBuffer.SetData(values);
 
-		values = new float[resolution * resolution * resolution * 2];
+		values = new float[resolution * resolution * resolution * 3];
 		pheromoneValuesBuffer.SetData(values);
 		pastPheromoneValuesBuffer.SetData(values);
 
@@ -572,12 +578,23 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 
     bool DoSimulation(int frameCount) {
 		if (count == 200) {
-			List<float> values = SpawnAgents(300);
+			List<Vector2> values = SpawnAgents(300);
 			agentValuesBuffer.SetData(values);
 			pastAgentValuesBuffer.SetData(values);
 		}
 
 		if (count < frameCount) {
+			if (Random.Range(0f, 1f) <= 0.5f) {
+				List<Vector3> trailSpawnLocations = new List<Vector3> { new Vector3(27,0,0), new Vector3(28,0,0), new Vector3(29,0,0), new Vector3(30,0,0), new Vector3(31,0,0), new Vector3(32,0,0), new Vector3(27,0,59), new Vector3(28,0,59), new Vector3(29,0,59), new Vector3(30,0,59), new Vector3(31,0,59), new Vector3(32,0,59), new Vector3(0,0,27), new Vector3(0,0,28), new Vector3(0,0,29), new Vector3(0,0,30), new Vector3(0,0,31), new Vector3(0,0,31), new Vector3(59,0,27), new Vector3(59,0,28), new Vector3(59,0,29), new Vector3(59,0,30), new Vector3(59,0,31), new Vector3(59,0,31) };
+
+				Vector3 spawnLoc = trailSpawnLocations[Random.Range(0, 24)];
+
+				float[] values = new float[resolution * resolution * resolution * 2];
+				agentValuesBuffer.GetData(values);
+				values[(int)spawnLoc.x * 2 + (int)spawnLoc.y * resolution * 2 + (int)spawnLoc.z * resolution * resolution * 2 + 1]++;
+				agentValuesBuffer.SetData(values);
+			}
+
 			DispatchCycleOfSimulation();
 			return false;
         } else {
@@ -590,6 +607,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			agentMaterial.SetFloat(stepId, step);
 			agentMaterial.SetBuffer(materialValuesId, agentValuesBuffer);
 			Graphics.DrawMeshInstancedProcedural(agentMesh, 0, agentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+			trailAgentMaterial.SetFloat(stepId, step);
+			trailAgentMaterial.SetBuffer(materialValuesId, agentValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(agentMesh, 0, trailAgentMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
 		}
 
 		if (cellsEnabled) {
@@ -606,6 +627,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			cementPheromoneMaterial.SetFloat(stepId, step);
 			cementPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
 			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, cementPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
+
+			trailPheromoneMaterial.SetFloat(stepId, step);
+			trailPheromoneMaterial.SetBuffer(materialValuesId, pheromoneValuesBuffer);
+			Graphics.DrawMeshInstancedProcedural(pheromoneMesh, 0, trailPheromoneMaterial, bounds, (int)Mathf.Pow(indexStep * 4, 3));
 		}
 	}
 
@@ -619,7 +644,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 
 			computeShader.Dispatch(0, 2, 2, 2);
 
-			float[] values = new float[resolution * resolution * resolution];
+			float[] values = new float[resolution * resolution * resolution * 2];
 			agentValuesBuffer.GetData(values);
 			pastAgentValuesBuffer.SetData(values);
 
@@ -627,7 +652,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			cellValuesBuffer.GetData(values);
 			pastCellValuesBuffer.SetData(values);
 
-			values = new float[resolution * resolution * resolution * 2];
+			values = new float[resolution * resolution * resolution * 3];
 			pheromoneValuesBuffer.GetData(values);
 			pastPheromoneValuesBuffer.SetData(values);
 
@@ -650,10 +675,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		}
 	}
 
-	List<float> SpawnAgents(int amount) {
-		List<float> returnList = new List<float>();
+	List<Vector2> SpawnAgents(int amount) {
+		List<Vector2> returnList = new List<Vector2>();
 		for (int i = 0; i < resolution * resolution * resolution; i++) {
-			returnList.Add(0);
+			returnList.Add(Vector2.zero);
         }
 
 		int counter = 0;
@@ -662,7 +687,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 
 			int index = (int)(newPos.x + resolution * newPos.y + resolution * resolution * newPos.z);
 
-			returnList[index]++;
+			returnList[index] = new Vector2(returnList[index].x + 1, 0);
 			counter++;
 		}
 

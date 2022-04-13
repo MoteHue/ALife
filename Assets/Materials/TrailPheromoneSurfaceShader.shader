@@ -1,4 +1,4 @@
-Shader "Custom/QueenSurfaceShader"
+Shader "Custom/TrailSurfaceShader"
 {
     Properties
     {
@@ -40,7 +40,7 @@ Shader "Custom/QueenSurfaceShader"
 
         void ConfigureProcedural() {
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-                float value = _Values[unity_InstanceID].x;
+                float value = _Values[unity_InstanceID].z;
 
                 if (value <= 0) {
                     unity_ObjectToWorld = 0.0;

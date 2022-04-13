@@ -7,12 +7,12 @@ uint _Counter;
 uint _MicroruleCount;
 
 // Buffers used for calculations.
-RWStructuredBuffer<float> _AgentValues;
+RWStructuredBuffer<float2> _AgentValues;
 RWStructuredBuffer<float> _CellValues;
-RWStructuredBuffer<float2> _PheromoneValues; // x = Queen, y = Cement
-RWStructuredBuffer<float> _PastAgentValues;
+RWStructuredBuffer<float3> _PheromoneValues; // x = Queen, y = Cement, z = Trail
+RWStructuredBuffer<float2> _PastAgentValues;
 RWStructuredBuffer<float> _PastCellValues;
-RWStructuredBuffer<float2> _PastPheromoneValues;
+RWStructuredBuffer<float3> _PastPheromoneValues;
 StructuredBuffer<float3> _SpawnLocations;
 RWStructuredBuffer<float> _Microrules;
 
@@ -43,8 +43,13 @@ float2 GetSeed(uint3 id) {
 }
 
 void MakeMove(float3 currentPos, float3 newPos) {
-	_AgentValues[GetIndexGlobal(newPos)]++;
-	_AgentValues[GetIndexGlobal(currentPos)]--;
+	_AgentValues[GetIndexGlobal(newPos)].x++;
+	_AgentValues[GetIndexGlobal(currentPos)].x--;
+}
+
+void MakeMoveTrail(float3 currentPos, float3 newPos) {
+    _AgentValues[GetIndexGlobal(newPos)].y++;
+    _AgentValues[GetIndexGlobal(currentPos)].y--;
 }
 
 float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
@@ -56,6 +61,18 @@ float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
 
 	MakeMove(currentPos, newPos);
 	return newPos;
+}
+
+float3 CompleteLifeCycleTrail(uint3 id, float3 currentPos) {
+    float3 trailSpawnLocations[24] = { float3(27,0,0), float3(28,0,0), float3(29,0,0), float3(30,0,0), float3(31,0,0), float3(32,0,0),
+                                       float3(27,0,59), float3(28,0,59), float3(29,0,59), float3(30,0,59), float3(31,0,59), float3(32,0,59),
+                                       float3(0,0,27), float3(0,0,28), float3(0,0,29), float3(0,0,30), float3(0,0,31), float3(0,0,31),
+                                       float3(59,0,27), float3(59,0,28), float3(59,0,29), float3(59,0,30), float3(59,0,31), float3(59,0,31) };
+
+    float3 newPos = trailSpawnLocations[RandInt(0, 24, GetSeed(id))];
+
+    MakeMoveTrail(currentPos, newPos);
+    return newPos;
 }
 
 bool CheckNoObstructions(float3 currentPos, float3 move) {
@@ -233,6 +250,102 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
         }
     }
     else {
+        float3 newPos = CompleteLifeCycle(id, currentPos);
+        return newPos;
+    }
+}
+
+float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
+    float3 possibleMoves[26];
+
+    uint counter = 0;
+
+    for (int x = -1; x <= 1; x++) {
+        //if (pos.x + x >= 0 && pos.x + x < gridUI.width) {
+        for (int y = -1; y <= 1; y++) {
+            if (currentPos.y + y >= 0 && currentPos.y + y < (float)_Resolution) { // Can't move out of grid vertically
+                for (int z = -1; z <= 1; z++) {
+                    //if (pos.z + z >= 0 && pos.z + z < gridUI.depth) {
+                    if ((x != 0 || y != 0 || z != 0)) {
+                        if (currentPos.x + x < 0 || currentPos.x + x >= (float)_Resolution || currentPos.z + z < 0 || currentPos.z + z >= (float)_Resolution) { // Moving out of grid
+                            possibleMoves[counter] = float3(x, y, z);
+                            counter++;
+                        } else if (CheckNoObstructions(currentPos, float3(x, y, z)) && CheckNeighbouringSurface(currentPos.x + x, currentPos.y + y, currentPos.z + z)) { // Moving within grid
+                            possibleMoves[counter] = float3 (x, y, z);
+                            counter++;
+                        }
+                    }
+                    //}
+                }
+            }
+        }
+        //}
+    }
+
+    if (counter != 0) {
+        float3 move;
+        float trailSum = 0;
+
+        for (uint i = 0; i < counter; i++) {
+            float trailValue = _PastPheromoneValues[GetIndexGlobal(currentPos + possibleMoves[i])].z;
+            trailSum += trailValue;
+        }
+
+        if (trailSum == 0) {
+            float3 movesTowardsCentre[26];
+            uint counter2 = 0;
+            for (uint i = 0; i < counter; i++) {
+                if ((currentPos.x < 30 && possibleMoves[i].x == 1)
+                    || (currentPos.x > 30 && possibleMoves[i].x == -1)
+                    || (currentPos.z < 30 && possibleMoves[i].z == 1)
+                    || (currentPos.z > 30 && possibleMoves[i].z == -1)) {
+                    movesTowardsCentre[counter2] = possibleMoves[i];
+                    counter2++;
+                }
+            }
+            if (counter2 > 0) {
+                float centreChance = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + currentPos.x + currentPos.y + currentPos.z);
+                if (centreChance < 20.0) {
+                    move = movesTowardsCentre[RandInt(0, counter2, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+                } else {
+                    move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+                }
+            } else {
+                move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+            }
+        } else {
+            float proportions[26];
+            for (uint j = 0; j < counter; j++) {
+                float trailValue = _PastPheromoneValues[GetIndexGlobal(currentPos + possibleMoves[j])].z;
+                proportions[j] = (trailValue / trailSum) * 100;
+            }
+
+            float moveChoice = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z);
+            float sum = 0;
+
+            for (uint k = 0; k < counter; k++) {
+                if (sum + proportions[k] > moveChoice) {
+                    float chooseTrail = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z + 7.3 * moveChoice);
+                    if ((1.0 / _PastPheromoneValues[GetIndexGlobal(currentPos + possibleMoves[k])].z) * 100 < chooseTrail) {
+                        move = possibleMoves[k];
+                    } else {
+                        move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
+                    }
+                    break;
+                } else {
+                    sum += proportions[k];
+                }
+            }
+        }
+
+        if (currentPos.x + move.x < 0 || currentPos.x + move.x >= (float)_Resolution || currentPos.z + move.z < 0 || currentPos.z + move.z >= (float)_Resolution) { // Moving out of grid
+            float3 newPos = CompleteLifeCycle(id, currentPos);
+            return newPos;
+        } else { // Moving within grid
+            MakeMoveTrail(currentPos, currentPos + move);
+            return currentPos + move;
+        }
+    } else {
         float3 newPos = CompleteLifeCycle(id, currentPos);
         return newPos;
     }
@@ -504,6 +617,67 @@ float CalcDiffusionFromNeighboursQueen(float3 pos) {
     return sum;
 }
 
+float CalcDiffusionFromNeighboursTrail(float3 pos) {
+    float sum = 0.0;
+    float value = _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z))].z;
+    float alpha = 1.0 / 7.0;
+
+    if (pos.x > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x - 1, pos.y, pos.z))].z;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.x < (float)_Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x + 1, pos.y, pos.z))].z;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.y > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y - 1, pos.z))].z;
+        }
+    } // Note there is no else as the floor is considered to be made of blocks.
+    if (pos.y < (float)_Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y + 1, pos.z))].z;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.z > 0) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z - 1))].z;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+    if (pos.z < (float)_Resolution - 1) {
+        if (_PastCellValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))] == 0) {
+            sum += -alpha * (value - _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].z);
+        } else {
+            sum += alpha * _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z + 1))].z;
+        }
+    } else {
+        sum += -alpha * value;
+    }
+
+    return sum;
+}
+
 float CalcDiffusionFromNeighboursCement(float3 pos) {
     float sum = 0.0;
     float value = _PastPheromoneValues[GetIndexGlobal(float3(pos.x, pos.y, pos.z))].y;
@@ -581,9 +755,11 @@ void DecayPheromoneValues(uint3 id) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x > 0)
-                _PheromoneValues[GetIndexLocal(id, x, y, z)].x *= 0.9;
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].x *= 0.9;
                 if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y > 0)
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].y *= 0.9;
+                if (_PheromoneValues[GetIndexLocal(id, x, y, z)].z > 0)
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z *= 0.9;
             }
         }
     }
@@ -607,7 +783,7 @@ void AgentStepThroughTime(uint3 id) {
     for (uint x = 0; x < _IndexStep; x++) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
-                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)]; i++) {
+                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)].x; i++) {
                     positions[counter] = TryMakeMove(id, float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z), i);
                     counter++;
                 }
@@ -617,6 +793,18 @@ void AgentStepThroughTime(uint3 id) {
 
     for (int i = 0; i < counter; i++) {
         TryPlaceBlock(id, positions[i]);
+    }
+}
+
+void TrailAgentStepThroughTime(uint3 id) {
+    for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                for (uint i = 0; i < (uint)_PastAgentValues[GetIndexLocal(id, x, y, z)].y; i++) {
+                    TryMakeMoveTrail(id, float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z), i);
+                }
+            }
+        }
     }
 }
 
@@ -632,6 +820,18 @@ void DoQueenCells(uint3 id) {
     }
 }
 
+void DoTrailPheromoneProduction(uint3 id) {
+    for (uint x = 0; x < _IndexStep; x++) {
+        for (uint y = 0; y < _IndexStep; y++) {
+            for (uint z = 0; z < _IndexStep; z++) {
+                if (_PastAgentValues[GetIndexLocal(id, x, y, z)].y > 0) {
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 100;
+                }
+            }
+        }
+    }
+}
+
 void PheromoneStepThroughTime(uint3 id) {
     DecayPheromoneValues(id);
 
@@ -641,8 +841,12 @@ void PheromoneStepThroughTime(uint3 id) {
                 if (_PastCellValues[GetIndexLocal(id, x, y, z)] == 0) {
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].x += CalcDiffusionFromNeighboursQueen(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
                     if (_PheromoneValues[GetIndexLocal(id, x, y, z)].x < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 0;
+
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].y += CalcDiffusionFromNeighboursCement(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
                     if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
+
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z += CalcDiffusionFromNeighboursTrail(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
+                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].z < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 0;
                 }
             }
         }
@@ -650,26 +854,17 @@ void PheromoneStepThroughTime(uint3 id) {
 
     DecayCementInCells(id);
     DoQueenCells(id);
+    DoTrailPheromoneProduction(id);
 }
 
 [numthreads(2, 2, 2)]
 void FunctionKernel(uint3 id: SV_DispatchThreadID) {
 
-	//FillEntireGridDebugFunction(id);
-
-    //if (id.x == 0 && id.y == 0 && id.z == 0) _AgentValues[0] = 1;
-
-    /*for (uint x = 0; x < _IndexStep; x++) {
-        for (uint y = 0; y < _IndexStep; y++) {
-            for (uint z = 0; z < _IndexStep; z++) {
-                _AgentValues[GetIndexLocal(id, x, y, z)] = 1;
-            }
-        }
-    }*/
-
-   if (_Counter > 200) {
+    if (_Counter > 200) {
         AgentStepThroughTime(id);
     }
+
+    TrailAgentStepThroughTime(id);
     
     if ((float) _Counter % 5.0 == 0 || _Counter <= 200) {
         PheromoneStepThroughTime(id);
