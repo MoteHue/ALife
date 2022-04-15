@@ -423,10 +423,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 					microrules = genomes[popCounter];
 				}
 				if (count % 10 == 0) {
-					progressImage.transform.localScale = new Vector3(count / 5000f, 1f, 1f);
+					progressImage.transform.localScale = new Vector3(count / 10000f, 1f, 1f);
 				}
 
-				bool finished = DoSimulation(5000);
+				bool finished = DoSimulation(10000);
 
 				if (count % 500 == 0 && count != 0) {
 					float[] values = new float[resolution * resolution * resolution];
@@ -446,7 +446,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 				}
 
 				if (finished) {
-					float fitness = CalcWallFitness(new Vector3(30, 30), 10f);
+					float fitness = CalcFitness(new Vector3(30, 30), 10f);
 					result.Add((genomes[popCounter], fitness));
 					popCounter++;
 					ClearBuffers();
@@ -718,7 +718,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		agentsEnabled = !agentsEnabled;
 	}
 
-	float CalcWallFitness(Vector2 wallCentre, float targetRadius) {
+	float CalcFitness(Vector2 wallCentre, float targetRadius) {
 		float[] values = new float[resolution * resolution * resolution];
 		cellValuesBuffer.GetData(values);
 
@@ -758,44 +758,6 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		if (count == 0) return 0f;
 
 		return (sum / count) * 100f + heightAdvantage;
-	}
-
-	float CalcDomeFitness(Vector3 domeCentre, float targetRadius) {
-		float[] values = new float[resolution * resolution * resolution];
-		cellValuesBuffer.GetData(values);
-
-		float sum = 0;
-		int count = 0;
-
-		for (int i = 0; i < values.Length; i++) {
-			if (values[i] == 1 || values[i] == 2) {
-				Vector3 coords = new Vector3(i % resolution, (i / resolution) % resolution, (i / (resolution * resolution)) % resolution);
-				float distance = Vector3.Distance(coords, domeCentre);
-				float difference = Mathf.Abs(distance - targetRadius);
-				
-				if (difference <= 0.5f) {
-					sum += 1f;
-                } else if (difference <= 1.5f) {
-					sum += 0.75f;
-				} else if (difference <= 2.5f) {
-					sum += 0.25f;
-				} else if (difference <= 3.5f) {
-					sum += 0f;
-				} else if (difference <= 4.5f) {
-					sum += -0.25f;
-				} else if (difference <= 5.5f) {
-					sum += -0.75f;
-				} else {
-					sum += -1f;
-				}
-
-				count++;
-			}
-		}
-
-		if (count == 0) return 0f;
-
-		return (sum / count) * 100f;
 	}
 
 	void GenerateTemplates() {

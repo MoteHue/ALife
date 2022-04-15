@@ -325,7 +325,7 @@ float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
             return newPos;
         } else { // Moving within grid
             float3 newPos = currentPos + move;
-            if (newPos.x >= 28 && newPos.x <= 32 && newPos.z >= 28 && newPos.z <= 32 && newPos.y <= 3) {
+            if (newPos.x >= 28 && newPos.x <= 32 && newPos.z >= 28 && newPos.z <= 32) {
                 newPos = CompleteLifeCycleTrail(id, currentPos);
             } else {
                 MakeMoveTrail(currentPos, newPos);
@@ -800,7 +800,7 @@ void DoQueenCells(uint3 id) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PastCellValues[GetIndexLocal(id, x, y, z)] == 10) {
-                    _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 400;
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].x = 6400;
                 }
             }
         }
@@ -812,7 +812,7 @@ void DoTrailPheromoneProduction(uint3 id) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PastAgentValues[GetIndexLocal(id, x, y, z)].y > 0) {
-                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 20;
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 200;
                 }
             }
         }

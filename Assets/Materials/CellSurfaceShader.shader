@@ -38,7 +38,7 @@ Shader "Custom/CellSurfaceShader"
             #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
                 float value = _Values[unity_InstanceID];
 
-                if (value <= 0/* || unity_InstanceID % _Resolution == 27 || unity_InstanceID % _Resolution == 33*/) {
+                if (value <= 0 || value == 10) {
                     unity_ObjectToWorld = 0.0;
                 }
                 else {
@@ -50,8 +50,6 @@ Shader "Custom/CellSurfaceShader"
                         colour = fixed4(1, 1, 0, 1);
                     } else if (value == 2) {
                         colour = fixed4(0, 1, 1, 1);
-                    } else if (value == 3) {
-                        colour = colour = fixed4(1, 0, 1, 1);
                     }
                 }
             #endif
