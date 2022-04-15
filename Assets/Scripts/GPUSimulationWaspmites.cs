@@ -129,7 +129,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		pastCellValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float));
 		pastPheromoneValuesBuffer = new ComputeBuffer(resolution * resolution * resolution, sizeof(float) * 3);
 		spawnLocationsBuffer = new ComputeBuffer(resolution * 2 + (resolution - 2) * 4 + (resolution - 4) * 2, sizeof(float) * 3);
-		microrulesBuffer = new ComputeBuffer(30 * microruleCount, sizeof(float));
+		microrulesBuffer = new ComputeBuffer(32 * microruleCount, sizeof(float));
 
 		bounds = new Bounds(Vector3.zero, Vector3.one * resolution);
 		indexStep = Mathf.CeilToInt(resolution / 4f);
@@ -180,11 +180,11 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	}
 
 	bool GenomeAlreadyContainsMicrorule(List<float> genome, List<float> microrule) {
-		for (int i = 0; i < genome.Count / 30; i++) {
+		for (int i = 0; i < genome.Count / 32; i++) {
 			// rotation 0°
 			bool microruleFound = true;
 			for (int j = 0; j < 26; j++) {
-				if (microrule[j] == genome[(i * 30) + j]) {
+				if (microrule[j] == genome[(i * 32) + j]) {
 					microruleFound = false;
 					break;
 				}
@@ -195,7 +195,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			List<int> indices = new List<int> { 2, 5, 8, 1, 4, 7, 0, 3, 6, 11, 13, 16, 10, 15, 9, 12, 14, 19, 22, 25, 18, 21, 24, 17, 20, 23 };
 			microruleFound = true;
 			for (int j = 0; j < 26; j++) {
-				if (microrule[j] == genome[(i * 30) + indices[j]]) {
+				if (microrule[j] == genome[(i * 32) + indices[j]]) {
 					microruleFound = false;
 					break;
 				}
@@ -206,7 +206,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			indices = new List<int> { 8, 7, 6, 5, 4, 3, 2, 1, 0, 16, 15, 14, 13, 12, 11, 10, 9, 25, 24, 23, 22, 21, 20, 19, 18, 17 };
 			microruleFound = true;
 			for (int j = 0; j < 26; j++) {
-				if (microrule[j] == genome[(i * 30) + indices[j]]) {
+				if (microrule[j] == genome[(i * 32) + indices[j]]) {
 					microruleFound = false;
 					break;
 				}
@@ -217,7 +217,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			indices = new List<int> { 6, 3, 0, 7, 4, 1, 8, 5, 2, 14, 12, 9, 15, 10, 16, 13, 11, 23, 20, 17, 24, 21, 18, 25, 22, 19 };
 			microruleFound = true;
 			for (int j = 0; j < 26; j++) {
-				if (microrule[j] == genome[(i * 30) + indices[j]]) {
+				if (microrule[j] == genome[(i * 32) + indices[j]]) {
 					microruleFound = false;
 					break;
 				}
@@ -278,6 +278,12 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 				genome.Add(minRange);
 				genome.Add(maxRange);
 
+				minRange = Mathf.Max(0.001f, Random.Range(0f, 1f) * 0.5f);
+				maxRange = 0.5f + Random.Range(0f, 1f);
+
+				genome.Add(minRange);
+				genome.Add(maxRange);
+
 			}
 			genomes.Add(genome);
 		}
@@ -287,9 +293,9 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			output += $"genome {i}: [";
 			for (int j = 0; j < microruleCount; j++) {
 				output += "[";
-				for (int k = 0; k < 30; k++) {
-					if (genomes[i][j * 30 + k] == 100) output += ",_";
-					else output += $",{genomes[i][j * 30 + k]}";
+				for (int k = 0; k < 32; k++) {
+					if (genomes[i][j * 32 + k] == 100) output += ",_";
+					else output += $",{genomes[i][j * 32 + k]}";
 					if (k == 25) output += "  ";
 				}
 				output += "]\n";
@@ -314,16 +320,16 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		for (int i = 0; i < microruleCount; i++) {
 			List<float> microrule = new List<float>();
 			for (int j = 0; j < 28; j++) {
-				microrule.Add(genome[(i * 30) + j]);
+				microrule.Add(genome[(i * 32) + j]);
 			}
 
 			float microruleUsed = microrule[27];
 			bool shouldReplaceMicrorule = false;
 			if (microruleUsed == 1) {
 				string output = "Microrule used: [";
-				for (int k = 0; k < 30; k++) {
-					if (genome[(i * 30) + k] == 100) output += ",_";
-					else output += $",{genome[(i * 30) + k]}";
+				for (int k = 0; k < 32; k++) {
+					if (genome[(i * 32) + k] == 100) output += ",_";
+					else output += $",{genome[(i * 32) + k]}";
 				}
 				output += "]\n";
 				Debug.Log(output);
@@ -347,6 +353,12 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 
 			float minRange = Mathf.Max(0.001f, Gaussian(genome[28] * 2, 0.05f) * 0.5f);
 			float maxRange = 0.5f + Gaussian(genome[29] - 0.5f, 0.05f);
+
+			microrule.Add(minRange);
+			microrule.Add(maxRange);
+
+			minRange = Mathf.Max(0.001f, Gaussian(genome[28] * 2, 0.05f) * 0.5f);
+			maxRange = 0.5f + Gaussian(genome[29] - 0.5f, 0.05f);
 
 			microrule.Add(minRange);
 			microrule.Add(maxRange);
@@ -411,10 +423,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 					microrules = genomes[popCounter];
 				}
 				if (count % 10 == 0) {
-					progressImage.transform.localScale = new Vector3(count / 3000f, 1f, 1f);
+					progressImage.transform.localScale = new Vector3(count / 5000f, 1f, 1f);
 				}
 
-				bool finished = DoSimulation(3000);
+				bool finished = DoSimulation(5000);
 
 				if (count % 500 == 0 && count != 0) {
 					float[] values = new float[resolution * resolution * resolution];
@@ -455,7 +467,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 				}
 
 				for (int i = 0; i < microruleCount; i++) {
-					bestResult.Item1[i * 30 + 27] = 0;
+					bestResult.Item1[i * 32 + 27] = 0;
 				}
 
 				for (int j = 0; j < popSize; j++) {
@@ -512,22 +524,22 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 						List<float> newGenome = new List<float>();
 						for (int a = 0; a < twoPoints.Item1; a++) {
 							List<float> microrule = new List<float>();
-							for (int k = 0; k < 30; k++) {
-								microrule.Add(results[genCounter][parentIndices.Item1].Item1[a * 30 + k]);
+							for (int k = 0; k < 32; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item1].Item1[a * 32 + k]);
 							}
 							newGenome.AddRange(microrule);
 						}
 						for (int b = twoPoints.Item1; b < twoPoints.Item2; b++) {
 							List<float> microrule = new List<float>();
-							for (int k = 0; k < 30; k++) {
-								microrule.Add(results[genCounter][parentIndices.Item2].Item1[b * 30 + k]);
+							for (int k = 0; k < 32; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item2].Item1[b * 32 + k]);
 							}
 							newGenome.AddRange(microrule);
 						}
 						for (int c = twoPoints.Item2; c < microruleCount; c++) {
 							List<float> microrule = new List<float>();
-							for (int k = 0; k < 30; k++) {
-								microrule.Add(results[genCounter][parentIndices.Item1].Item1[c * 30 + k]);
+							for (int k = 0; k < 32; k++) {
+								microrule.Add(results[genCounter][parentIndices.Item1].Item1[c * 32 + k]);
 							}
 							newGenome.AddRange(microrule);
 						}
@@ -557,9 +569,9 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 					output += $"genome {i}: [";
 					for (int j = 0; j < microruleCount; j++) {
 						output += "[";
-						for (int k = 0; k < 30; k++) {
-							if (genomes[i][j * 30 + k] == 100) output += ",_";
-							else output += $",{genomes[i][j * 30 + k]}";
+						for (int k = 0; k < 32; k++) {
+							if (genomes[i][j * 32 + k] == 100) output += ",_";
+							else output += $",{genomes[i][j * 32 + k]}";
 							if (k == 25) output += "  ";
 						}
 						output += "]\n";
@@ -585,13 +597,13 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 
 		if (count < frameCount) {
 			if (Random.Range(0f, 1f) <= 0.5f) {
-				List<Vector3> trailSpawnLocations = new List<Vector3> { new Vector3(27,0,0), new Vector3(28,0,0), new Vector3(29,0,0), new Vector3(30,0,0), new Vector3(31,0,0), new Vector3(32,0,0), new Vector3(27,0,59), new Vector3(28,0,59), new Vector3(29,0,59), new Vector3(30,0,59), new Vector3(31,0,59), new Vector3(32,0,59), new Vector3(0,0,27), new Vector3(0,0,28), new Vector3(0,0,29), new Vector3(0,0,30), new Vector3(0,0,31), new Vector3(0,0,31), new Vector3(59,0,27), new Vector3(59,0,28), new Vector3(59,0,29), new Vector3(59,0,30), new Vector3(59,0,31), new Vector3(59,0,31) };
+				List<Vector3> trailSpawnLocations = new List<Vector3> { /*new Vector3(27,0,0), new Vector3(28,0,0), new Vector3(29,0,0), new Vector3(30,0,0), new Vector3(31,0,0), new Vector3(32,0,0), new Vector3(27,0,59), new Vector3(28,0,59), new Vector3(29,0,59), new Vector3(30,0,59), new Vector3(31,0,59), new Vector3(32,0,59),*/ new Vector3(0,0,27), new Vector3(0,0,28), new Vector3(0,0,29), new Vector3(0,0,30), new Vector3(0,0,31), new Vector3(0,0,32), new Vector3(59,0,27), new Vector3(59,0,28), new Vector3(59,0,29), new Vector3(59,0,30), new Vector3(59,0,31), new Vector3(59,0,32) };
 
-				Vector3 spawnLoc = trailSpawnLocations[Random.Range(0, 24)];
+				Vector3 spawnLoc = trailSpawnLocations[Random.Range(0, 12)];
 
 				float[] values = new float[resolution * resolution * resolution * 2];
 				agentValuesBuffer.GetData(values);
-				values[(int)spawnLoc.x * 2 + (int)spawnLoc.y * resolution * 2 + (int)spawnLoc.z * resolution * resolution * 2 + 1]++;
+				values[(int)(spawnLoc.x * 2 + spawnLoc.y * resolution * 2 + spawnLoc.z * resolution * resolution * 2 + 1)]++;
 				agentValuesBuffer.SetData(values);
 			}
 

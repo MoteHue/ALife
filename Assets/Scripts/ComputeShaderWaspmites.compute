@@ -64,12 +64,12 @@ float3 CompleteLifeCycle(uint3 id, float3 currentPos) {
 }
 
 float3 CompleteLifeCycleTrail(uint3 id, float3 currentPos) {
-    float3 trailSpawnLocations[24] = { float3(27,0,0), float3(28,0,0), float3(29,0,0), float3(30,0,0), float3(31,0,0), float3(32,0,0),
-                                       float3(27,0,59), float3(28,0,59), float3(29,0,59), float3(30,0,59), float3(31,0,59), float3(32,0,59),
-                                       float3(0,0,27), float3(0,0,28), float3(0,0,29), float3(0,0,30), float3(0,0,31), float3(0,0,31),
-                                       float3(59,0,27), float3(59,0,28), float3(59,0,29), float3(59,0,30), float3(59,0,31), float3(59,0,31) };
+    float3 trailSpawnLocations[12] = { /*float3(27,0,0), float3(28,0,0), float3(29,0,0), float3(30,0,0), float3(31,0,0), float3(32,0,0),
+                                       float3(27,0,59), float3(28,0,59), float3(29,0,59), float3(30,0,59), float3(31,0,59), float3(32,0,59),*/
+                                       float3(0,0,27), float3(0,0,28), float3(0,0,29), float3(0,0,30), float3(0,0,31), float3(0,0,32),
+                                       float3(59,0,27), float3(59,0,28), float3(59,0,29), float3(59,0,30), float3(59,0,31), float3(59,0,32) };
 
-    float3 newPos = trailSpawnLocations[RandInt(0, 24, GetSeed(id))];
+    float3 newPos = trailSpawnLocations[RandInt(0, 11, GetSeed(id))];
 
     MakeMoveTrail(currentPos, newPos);
     return newPos;
@@ -248,8 +248,7 @@ float3 TryMakeMove(uint3 id, float3 currentPos, float seedScalar) {
             MakeMove(currentPos, currentPos + move);
             return currentPos + move;
         }
-    }
-    else {
+    } else {
         float3 newPos = CompleteLifeCycle(id, currentPos);
         return newPos;
     }
@@ -267,12 +266,17 @@ float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
                 for (int z = -1; z <= 1; z++) {
                     //if (pos.z + z >= 0 && pos.z + z < gridUI.depth) {
                     if ((x != 0 || y != 0 || z != 0)) {
-                        if (currentPos.x + x < 0 || currentPos.x + x >= (float)_Resolution || currentPos.z + z < 0 || currentPos.z + z >= (float)_Resolution) { // Moving out of grid
-                            possibleMoves[counter] = float3(x, y, z);
-                            counter++;
-                        } else if (CheckNoObstructions(currentPos, float3(x, y, z)) && CheckNeighbouringSurface(currentPos.x + x, currentPos.y + y, currentPos.z + z)) { // Moving within grid
-                            possibleMoves[counter] = float3 (x, y, z);
-                            counter++;
+                        if ((currentPos.x < 30 && x == 1)
+                            || (currentPos.x > 30 && x == -1)
+                            || (currentPos.z < 30 && z == 1)
+                            || (currentPos.z > 30 && z == -1)) { // Move towards centre {
+                            if (currentPos.x + x < 0 || currentPos.x + x >= (float)_Resolution || currentPos.z + z < 0 || currentPos.z + z >= (float)_Resolution) { // Moving out of grid
+                                possibleMoves[counter] = float3(x, y, z);
+                                counter++;
+                            } else if (CheckNoObstructions(currentPos, float3(x, y, z)) && CheckNeighbouringSurface(currentPos.x + x, currentPos.y + y, currentPos.z + z)) { // Moving within grid
+                                possibleMoves[counter] = float3 (x, y, z);
+                                counter++;
+                            }
                         }
                     }
                     //}
@@ -291,29 +295,7 @@ float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
             trailSum += trailValue;
         }
 
-        if (trailSum == 0) {
-            float3 movesTowardsCentre[26];
-            uint counter2 = 0;
-            for (uint i = 0; i < counter; i++) {
-                if ((currentPos.x < 30 && possibleMoves[i].x == 1)
-                    || (currentPos.x > 30 && possibleMoves[i].x == -1)
-                    || (currentPos.z < 30 && possibleMoves[i].z == 1)
-                    || (currentPos.z > 30 && possibleMoves[i].z == -1)) {
-                    movesTowardsCentre[counter2] = possibleMoves[i];
-                    counter2++;
-                }
-            }
-            if (counter2 > 0) {
-                float centreChance = RandFloat(0, 100, GetSeed(id) + 2 * seedScalar + currentPos.x + currentPos.y + currentPos.z);
-                if (centreChance < 20.0) {
-                    move = movesTowardsCentre[RandInt(0, counter2, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
-                } else {
-                    move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
-                }
-            } else {
-                move = possibleMoves[RandInt(0, counter, GetSeed(id) + 2 * seedScalar + 4.5 * currentPos.x + 3.7 * currentPos.y + 1.2 * currentPos.z)];
-            }
-        } else {
+        if (trailSum != 0) {
             float proportions[26];
             for (uint j = 0; j < counter; j++) {
                 float trailValue = _PastPheromoneValues[GetIndexGlobal(currentPos + possibleMoves[j])].z;
@@ -342,8 +324,13 @@ float3 TryMakeMoveTrail(uint3 id, float3 currentPos, float seedScalar) {
             float3 newPos = CompleteLifeCycleTrail(id, currentPos);
             return newPos;
         } else { // Moving within grid
-            MakeMoveTrail(currentPos, currentPos + move);
-            return currentPos + move;
+            float3 newPos = currentPos + move;
+            if (newPos.x >= 28 && newPos.x <= 32 && newPos.z >= 28 && newPos.z <= 32 && newPos.y <= 3) {
+                newPos = CompleteLifeCycleTrail(id, currentPos);
+            } else {
+                MakeMoveTrail(currentPos, newPos);
+            }
+            return newPos;
         }
     } else {
         float3 newPos = CompleteLifeCycleTrail(id, currentPos);
@@ -432,7 +419,7 @@ int CheckMicrorule(int index, float3 pos, int rotation) {
     int counter = 0;
     float values[26];
 
-    if ((_PastPheromoneValues[GetIndexGlobal(pos)].x < _Microrules[(index * 30) + 28]) || (_PastPheromoneValues[GetIndexGlobal(pos)].x > _Microrules[(index * 30) + 29])) {
+    if (((_PastPheromoneValues[GetIndexGlobal(pos)].x < _Microrules[(index * 32) + 28]) || (_PastPheromoneValues[GetIndexGlobal(pos)].x > _Microrules[(index * 32) + 29])) && ((_PastPheromoneValues[GetIndexGlobal(pos)].z < _Microrules[(index * 32) + 30]) || (_PastPheromoneValues[GetIndexGlobal(pos)].z > _Microrules[(index * 32) + 31]))) {
         return 0;
     }
 
@@ -515,12 +502,12 @@ int CheckMicrorule(int index, float3 pos, int rotation) {
     }
 
     for (int i = 0; i < 26; i++) {
-        if ((values[i] != _Microrules[(index * 30) + i]) && _Microrules[(index * 30) + i] != 100) {
+        if ((values[i] != _Microrules[(index * 32) + i]) && _Microrules[(index * 32) + i] != 100) {
             return 0;
         }
     }
 
-    return _Microrules[(index * 30) + 26];
+    return _Microrules[(index * 32) + 26];
 }
 
 // Return the cell type of the microrule that passes, or 0 if no rules pass.
@@ -529,7 +516,7 @@ int CheckMicrorules(float3 pos) {
         for (int rot = 0; rot < 4; rot++) {
             int microrule = CheckMicrorule(i, pos, rot);
             if (microrule != 0) {
-                _Microrules[(i * 30) + 27] = 1;
+                _Microrules[(i * 32) + 27] = 1;
                 return microrule;
             }
         }
@@ -825,7 +812,7 @@ void DoTrailPheromoneProduction(uint3 id) {
         for (uint y = 0; y < _IndexStep; y++) {
             for (uint z = 0; z < _IndexStep; z++) {
                 if (_PastAgentValues[GetIndexLocal(id, x, y, z)].y > 0) {
-                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 100;
+                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 20;
                 }
             }
         }
