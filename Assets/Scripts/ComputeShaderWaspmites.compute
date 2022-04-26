@@ -832,8 +832,8 @@ void PheromoneStepThroughTime(uint3 id) {
                     _PheromoneValues[GetIndexLocal(id, x, y, z)].y += CalcDiffusionFromNeighboursCement(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
                     if (_PheromoneValues[GetIndexLocal(id, x, y, z)].y < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].y = 0;
 
-                    _PheromoneValues[GetIndexLocal(id, x, y, z)].z += CalcDiffusionFromNeighboursTrail(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
-                    if (_PheromoneValues[GetIndexLocal(id, x, y, z)].z < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 0;
+                    //_PheromoneValues[GetIndexLocal(id, x, y, z)].z += CalcDiffusionFromNeighboursTrail(float3(id.x * _IndexStep + x, id.y * _IndexStep + y, id.z * _IndexStep + z));
+                    //if (_PheromoneValues[GetIndexLocal(id, x, y, z)].z < 0.001f) _PheromoneValues[GetIndexLocal(id, x, y, z)].z = 0;
                 }
             }
         }
@@ -841,7 +841,7 @@ void PheromoneStepThroughTime(uint3 id) {
 
     DecayCementInCells(id);
     DoQueenCells(id);
-    DoTrailPheromoneProduction(id);
+    //DoTrailPheromoneProduction(id);
 }
 
 [numthreads(2, 2, 2)]
@@ -851,7 +851,7 @@ void FunctionKernel(uint3 id: SV_DispatchThreadID) {
         AgentStepThroughTime(id);
     }
 
-    TrailAgentStepThroughTime(id);
+    //TrailAgentStepThroughTime(id);
     
     if ((float) _Counter % 5.0 == 0 || _Counter <= 200) {
         PheromoneStepThroughTime(id);

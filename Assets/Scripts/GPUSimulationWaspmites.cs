@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.IO;
 
 public class GPUSimulationWaspmites : MonoBehaviour {
 
@@ -412,6 +413,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 	}
 
 	List<float> pastValues;
+	int emptySceneCount = 0;
 
 	void DoGeneticAlgorithm() {
 		if (genCounter < noOfGenerations) {
@@ -423,10 +425,10 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 					microrules = genomes[popCounter];
 				}
 				if (count % 10 == 0) {
-					progressImage.transform.localScale = new Vector3(count / 10000f, 1f, 1f);
+					progressImage.transform.localScale = new Vector3(count / 3000f, 1f, 1f);
 				}
 
-				bool finished = DoSimulation(10000);
+				bool finished = DoSimulation(3000);
 
 				if (count % 500 == 0 && count != 0) {
 					float[] values = new float[resolution * resolution * resolution];
@@ -437,6 +439,9 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 					for (int i = 0; i < resolution * resolution * resolution; i++) {
 						if (values[i] != pastValues[i]) {
 							differenceFound = true;
+							if (count == 500) {
+								emptySceneCount++;
+                            }
 							break;
 						}
 					}
@@ -456,6 +461,12 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 			} else {
 				results.Add(result);
 				popCounter = 0;
+
+				using (StreamWriter file = File.AppendText("results/emptyCounts.txt")) {
+					file.WriteLine(emptySceneCount);
+                }
+				Debug.Log($"gen: {genCounter} emptySceneCount: {emptySceneCount}");
+				emptySceneCount = 0;
 
 				(List<float>, float) bestResult = results[genCounter][0];
 				int bestResultIndex = 0;
@@ -596,8 +607,8 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 		}
 
 		if (count < frameCount) {
-			if (Random.Range(0f, 1f) <= 0.5f) {
-				List<Vector3> trailSpawnLocations = new List<Vector3> { /*new Vector3(27,0,0), new Vector3(28,0,0), new Vector3(29,0,0), new Vector3(30,0,0), new Vector3(31,0,0), new Vector3(32,0,0), new Vector3(27,0,59), new Vector3(28,0,59), new Vector3(29,0,59), new Vector3(30,0,59), new Vector3(31,0,59), new Vector3(32,0,59),*/ new Vector3(0,0,27), new Vector3(0,0,28), new Vector3(0,0,29), new Vector3(0,0,30), new Vector3(0,0,31), new Vector3(0,0,32), new Vector3(59,0,27), new Vector3(59,0,28), new Vector3(59,0,29), new Vector3(59,0,30), new Vector3(59,0,31), new Vector3(59,0,32) };
+			/*if (Random.Range(0f, 1f) <= 0.5f) {
+				List<Vector3> trailSpawnLocations = new List<Vector3> { /*new Vector3(27,0,0), new Vector3(28,0,0), new Vector3(29,0,0), new Vector3(30,0,0), new Vector3(31,0,0), new Vector3(32,0,0), new Vector3(27,0,59), new Vector3(28,0,59), new Vector3(29,0,59), new Vector3(30,0,59), new Vector3(31,0,59), new Vector3(32,0,59),* new Vector3(0,0,27), new Vector3(0,0,28), new Vector3(0,0,29), new Vector3(0,0,30), new Vector3(0,0,31), new Vector3(0,0,32), new Vector3(59,0,27), new Vector3(59,0,28), new Vector3(59,0,29), new Vector3(59,0,30), new Vector3(59,0,31), new Vector3(59,0,32) };
 
 				Vector3 spawnLoc = trailSpawnLocations[Random.Range(0, 12)];
 
@@ -605,7 +616,7 @@ public class GPUSimulationWaspmites : MonoBehaviour {
 				agentValuesBuffer.GetData(values);
 				values[(int)(spawnLoc.x * 2 + spawnLoc.y * resolution * 2 + spawnLoc.z * resolution * resolution * 2 + 1)]++;
 				agentValuesBuffer.SetData(values);
-			}
+			}*/
 
 			DispatchCycleOfSimulation();
 			return false;
